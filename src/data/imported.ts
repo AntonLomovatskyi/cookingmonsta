@@ -1,11 +1,15 @@
 import type { Recipe } from "@/types/recipe";
+import aLittleCalm from "./imported/a-little-calm.json";
 
 /**
- * Recipes imported via the `/import-recipe` Claude Code skill (see .claude/skills/import-recipe).
- * These are committed to the repo and bundled into the deploy, so they appear on every device
+ * Recipes imported via the `/import-recipe` Claude Code skill (see .claude/skills/import-recipe)
+ * and the `scripts/import-channel.mjs` batch importer (whole-channel sync → JSON files in
+ * ./imported/). Committed to the repo and bundled into the deploy, so they appear on every device
  * without needing an API key or Firebase sync. Newest first. Bilingual, metric units only.
  */
-export const IMPORTED_RECIPES: Recipe[] = [
+const CHANNEL_RECIPES = aLittleCalm as unknown as Recipe[];
+
+const HAND_IMPORTED: Recipe[] = [
   {
     id: "cheesy-pizza-rolls",
     title: { en: "Cheesy Pizza Rolls", uk: "Сирні піца-роли" },
@@ -206,3 +210,6 @@ export const IMPORTED_RECIPES: Recipe[] = [
     createdAt: 1783429200000,
   },
 ];
+
+/** Hand-imported first (they're curated), then the batch-synced channel recipes. */
+export const IMPORTED_RECIPES: Recipe[] = [...HAND_IMPORTED, ...CHANNEL_RECIPES];
