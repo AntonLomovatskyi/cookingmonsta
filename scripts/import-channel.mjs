@@ -40,10 +40,13 @@ const MODEL = flag("model", "claude-haiku-4-5");
 const LIMIT = Number(flag("limit", "0")) || Infinity;
 const CONCURRENCY = 3;
 
-const YT_KEY = process.env.YT_API_KEY || "AIzaSyAqoOdiXXxhY_SzvfhFN8D_I22vl2ZOsVI";
+const YT_KEY = process.env.YT_API_KEY;
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
-if (!ANTHROPIC_KEY) {
-  console.error("Set ANTHROPIC_API_KEY. Example:\n  ANTHROPIC_API_KEY=sk-ant-… node scripts/import-channel.mjs");
+if (!YT_KEY || !ANTHROPIC_KEY) {
+  console.error(
+    "Set YT_API_KEY and ANTHROPIC_API_KEY. Example:\n" +
+      "  YT_API_KEY=AIza… ANTHROPIC_API_KEY=sk-ant-… node scripts/import-channel.mjs",
+  );
   process.exit(1);
 }
 

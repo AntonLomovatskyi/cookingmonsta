@@ -37,16 +37,22 @@ Each signed-in user can read/write only their own `users/{uid}` document.
 ## 4. Web config → GitHub repo Variables
 
 The build reads the Firebase config from repo **Variables** (Settings → Secrets and variables →
-Actions → **Variables**). Names must match exactly:
+Actions → **Variables**). They are already set for this repo. Names must match exactly; values come
+from Firebase console → Project settings → Your apps → Web app:
 
 ```
-VITE_FIREBASE_API_KEY               AIzaSyAqoOdiXXxhY_SzvfhFN8D_I22vl2ZOsVI
-VITE_FIREBASE_AUTH_DOMAIN           cookingmonsta-94ec3.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID            cookingmonsta-94ec3
-VITE_FIREBASE_STORAGE_BUCKET        cookingmonsta-94ec3.firebasestorage.app
-VITE_FIREBASE_MESSAGING_SENDER_ID   712753417427
-VITE_FIREBASE_APP_ID                1:712753417427:web:4b5abd0141232db7045826
+VITE_FIREBASE_API_KEY
+VITE_FIREBASE_AUTH_DOMAIN
+VITE_FIREBASE_PROJECT_ID
+VITE_FIREBASE_STORAGE_BUCKET
+VITE_FIREBASE_MESSAGING_SENDER_ID
+VITE_FIREBASE_APP_ID
+VITE_YOUTUBE_API_KEY                (optional — default YouTube Data API key for imports)
 ```
+
+> The web API key is public by design (it ships in the JS bundle). Its safety comes from
+> restrictions: in Google Cloud console → Credentials, restrict it by website referrer
+> (`antonlomovatskyi.github.io/*`) and to only the APIs it needs.
 
 Re-run the **Deploy web to GitHub Pages** workflow (or push any commit) so the build picks them up.
 
