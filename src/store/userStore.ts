@@ -1,0 +1,118 @@
+/**
+ * On-device user state (favourites, cook log, notes, own recipes, prefs, API keys).
+ * Persisted via zustand + localStorage.
+ *
+ * The synced subset is `PersistedData` (see below). API keys are deliberately EXCLUDED from it, so
+ * they never leave this browser — they are not pushed to Firestore and not written to backups.
+ */
+import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
+import type { Recipe } from "@/types/recipe";
+
+/** Extraction models the user can choose from (Settings). Ordered cheap → powerful. */
+export const AI_MODELS = [
+  { id: "claude-haiku-4-5", label: "Haiku 4.5", hint: "fast & cheap · default" },
+  { id: "claude-sonnet-5", label: "Sonnet 5", hint: "balanced" },
+  { id: "claude-opus-4-8", label: "Opus 4.8", hint: "most capable" },
+  { id: "claude-fable-5", label: "Fable 5", hint: "🔥 heavy" },
+] as const;
+export type AiModel = (typeof AI_MODELS)[number]["id"];
+
+export interface CookEntry {
+  recipeId: string;
+  at: number; // epoch ms
+}
+
+export interface UserState {
+  favourites: string[]; // recipe ids
+  notes: Record<string, string>; // id -> personal note
+  cooked: CookEntry[]; // cook log, most-recent first
+  recentlyViewed: string[]; // recipe ids, most-recent first (local only)
+  /** User-created & imported recipes, merged into the catalog at runtime. */
+  userRecipes: Recipe[];
+  theme: "dark" | "light";
+  /** Which Claude model extracts recipes. */
+  aiModel: AiModel;
+  /** Anthropic API key — local only, never synced. */
+  anthropicKey: string;
+  /** Optional YouTube Data API key — local only, never synced. */
+  youtubeKey: string;
+
+  setTheme: (t: "dark" | "light") => void;
+  setAiModel: (m: AiModel) => void;
+  setAnthropicKey: (k: string) => void;
+  setYoutubeKey: (k: string) => void;
+  toggleFavourite: (id: string) => void;
+  setNote: (id: string, text: string) => void;
+  logCooked: (id: string) => void;
+  clearCooked: () => void;
+  pushRecentlyViewed: (id: string) => void;
+  addUserRecipe: (r: Recipe) => void;
+  removeUserRecipe: (id: string) => void;
+  clearFavourites: () => void;
+  importData: (d: Partial<PersistedData>) => void;
+}
+
+/** The user-data fields that are exported/imported and cloud-synced. API keys are NOT included. */
+export type PersistedData = Pick<
+  UserState,
+  "favourites" | "notes" | "cooked" | "userRecipes" | "recentlyViewed" | "theme" | "aiModel"
+>;
+
+export const useUserStore = create<UserState>()(
+  persist(
+    (set) => ({
+      favourites: [],
+      notes: {},
+      cooked: [],
+      recentlyViewed: [],
+      userRecipes: [],
+      theme: "dark",
+      aiModel: "claude-haiku-4-5",
+      anthropicKey: "",
+      youtubeKey: "",
+
+      setTheme: (t) => set({ theme: t }),
+      setAiModel: (m) => set({ aiModel: m }),
+      setAnthropicKey: (k) => set({ anthropicKey: k.trim() }),
+      setYoutubeKey: (k) => set({ youtubeKey: k.trim() }),
+      toggleFavourite: (id) =>
+        set((s) => ({
+          favourites: s.favourites.includes(id) ? s.favourites.filter((x) => x !== id) : [...s.favourites, id],
+        })),
+      setNote: (id, text) =>
+        set((s) => {
+          const notes = { ...s.notes };
+          if (text.trim()) notes[id] = text;
+          else delete notes[id];
+          return { notes };
+        }),
+      logCooked: (id) => set((s) => ({ cooked: [{ recipeId: id, at: Date.now() }, ...s.cooked].slice(0, 500) })),
+      clearCooked: () => set({ cooked: [] }),
+      pushRecentlyViewed: (id) =>
+        set((s) => ({ recentlyViewed: [id, ...s.recentlyViewed.filter((x) => x !== id)].slice(0, 12) })),
+      addUserRecipe: (r) => set((s) => ({ userRecipes: [r, ...s.userRecipes.filter((x) => x.id !== r.id)] })),
+      removeUserRecipe: (id) =>
+        set((s) => ({
+          userRecipes: s.userRecipes.filter((x) => x.id !== id),
+          favourites: s.favourites.filter((x) => x !== id),
+        })),
+      clearFavourites: () => set({ favourites: [] }),
+      importData: (d) =>
+        set((s) => ({
+          favourites: d.favourites ?? s.favourites,
+          notes: d.notes ?? s.notes,
+          cooked: d.cooked ?? s.cooked,
+          userRecipes: d.userRecipes ?? s.userRecipes,
+          recentlyViewed: d.recentlyViewed ?? s.recentlyViewed,
+          theme: d.theme ?? s.theme,
+          aiModel: d.aiModel ?? s.aiModel,
+        })),
+    }),
+    {
+      name: "cookingmonsta/v1/user",
+      version: 1,
+      storage: createJSONStorage(() => localStorage),
+    },
+  ),
+);

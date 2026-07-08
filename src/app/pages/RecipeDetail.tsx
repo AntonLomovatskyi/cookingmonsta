@@ -1,0 +1,240 @@
+import { ChefHat, Clock, Heart, Minus, Pencil, Plus, Trash2, Users, Youtube } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import clsx from "clsx";
+import { difficultyBadge } from "@/components/RecipeCard";
+import { useRecipeById } from "@/data/useRecipes";
+import { getSeedRecipeById } from "@/data/recipes";
+import { formatQuantity, scaleIngredient } from "@/lib/scale";
+import { totalMinutes } from "@/types/recipe";
+import { useUserStore } from "@/store/userStore";
+
+export default function RecipeDetail() {
+  const { id } = useParams();
+  const nav = useNavigate();
+  const recipe = useRecipeById(id);
+  const favourites = useUserStore((s) => s.favourites);
+  const toggleFavourite = useUserStore((s) => s.toggleFavourite);
+  const notes = useUserStore((s) => s.notes);
+  const setNote = useUserStore((s) => s.setNote);
+  const logCooked = useUserStore((s) => s.logCooked);
+  const removeUserRecipe = useUserStore((s) => s.removeUserRecipe);
+  const pushRecentlyViewed = useUserStore((s) => s.pushRecentlyViewed);
+  const userRecipes = useUserStore((s) => s.userRecipes);
+
+  const [servings, setServings] = useState(recipe?.servings ?? 0);
+
+  useEffect(() => {
+    if (recipe) {
+      setServings(recipe.servings ?? 0);
+      pushRecentlyViewed(recipe.id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recipe?.id]);
+
+  const ratio = useMemo(() => {
+    if (!recipe?.servings || !servings) return 1;
+    return servings / recipe.servings;
+  }, [recipe?.servings, servings]);
+
+  if (!recipe) {
+    return <div className="px-6 py-16 text-center text-text-dim">Recipe not found.</div>;
+  }
+
+  const fav = favourites.includes(recipe.id);
+  const time = totalMinutes(recipe);
+  const isUserRecipe = userRecipes.some((r) => r.id === recipe.id);
+  const isEditableSeed = !isUserRecipe && !!getSeedRecipeById(recipe.id);
+  const diff = difficultyBadge(recipe.difficulty);
+  const note = notes[recipe.id] ?? "";
+
+  const onDelete = () => {
+    if (window.confirm(`Delete "${recipe.title}"? This can't be undone.`)) {
+      removeUserRecipe(recipe.id);
+      nav("/");
+    }
+  };
+
+  return (
+    <div className="pb-4">
+      {/* Cover */}
+      <div className="relative aspect-[16/9] w-full overflow-hidden bg-surface-alt">
+        {recipe.image ? (
+          <img src={recipe.image} alt="" className="h-full w-full object-cover" />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-6xl">🍳</div>
+        )}
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-bg to-transparent p-4">
+          <h1 className="font-display text-2xl font-bold text-text drop-shadow">{recipe.title}</h1>
+        </div>
+      </div>
+
+      <div className="px-4">
+        {recipe.description && <p className="mt-3 text-sm text-text-dim">{recipe.description}</p>}
+
+        {/* Meta row */}
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+          {time != null && (
+            <span className="flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-text-dim">
+              <Clock size={13} /> {time} min
+            </span>
+          )}
+          {recipe.servings != null && (
+            <span className="flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-text-dim">
+              <Users size={13} /> {recipe.servings} base
+            </span>
+          )}
+          {diff && <span className={clsx("rounded-full px-2.5 py-1 capitalize", diff.cls)}>{diff.label}</span>}
+          {recipe.cuisine && (
+            <span className="rounded-full border border-border px-2.5 py-1 text-text-dim">{recipe.cuisine}</span>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="mt-4 flex gap-2">
+          <Link
+            to={`/recipe/${recipe.id}/cook`}
+            className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-flame px-4 py-3 font-bold text-bg"
+          >
+            <ChefHat size={18} /> Cook
+          </Link>
+          <button
+            onClick={() => toggleFavourite(recipe.id)}
+            aria-label="Favourite"
+            className={clsx(
+              "flex w-12 items-center justify-center rounded-xl border",
+              fav ? "border-flame bg-flame/15 text-flame" : "border-border text-text-dim",
+            )}
+          >
+            <Heart size={18} fill={fav ? "currentColor" : "none"} />
+          </button>
+          {(isUserRecipe || isEditableSeed) && (
+            <Link
+              to={`/recipe/new?edit=${recipe.id}`}
+              aria-label="Edit"
+              className="flex w-12 items-center justify-center rounded-xl border border-border text-text-dim"
+            >
+              <Pencil size={18} />
+            </Link>
+          )}
+          {isUserRecipe && (
+            <button
+              onClick={onDelete}
+              aria-label="Delete"
+              className="flex w-12 items-center justify-center rounded-xl border border-border text-danger"
+            >
+              <Trash2 size={18} />
+            </button>
+          )}
+        </div>
+
+        {recipe.source?.url && (
+          <a
+            href={recipe.source.url}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-3 flex items-center gap-2 text-sm text-text-dim hover:text-flame"
+          >
+            <Youtube size={16} className="text-danger" />
+            {recipe.source.author ? `From ${recipe.source.author}` : "Watch the original"}
+          </a>
+        )}
+
+        {/* Ingredients with servings scaler */}
+        <div className="mt-6">
+          <div className="flex items-center justify-between">
+            <h2 className="font-display text-lg font-bold text-flame">Ingredients</h2>
+            {recipe.servings != null && (
+              <div className="flex items-center gap-2 rounded-full border border-border px-2 py-1">
+                <button
+                  onClick={() => setServings((s) => Math.max(1, s - 1))}
+                  className="text-text-dim hover:text-flame"
+                  aria-label="Fewer servings"
+                >
+                  <Minus size={16} />
+                </button>
+                <span className="min-w-14 text-center text-sm text-text">
+                  {servings} {servings === 1 ? "serving" : "servings"}
+                </span>
+                <button
+                  onClick={() => setServings((s) => s + 1)}
+                  className="text-text-dim hover:text-flame"
+                  aria-label="More servings"
+                >
+                  <Plus size={16} />
+                </button>
+              </div>
+            )}
+          </div>
+          <ul className="mt-3 space-y-1.5">
+            {recipe.ingredients.map((ing, i) => {
+              const scaled = scaleIngredient(ing, ratio);
+              return (
+                <li key={i} className="flex gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-sm">
+                  <span className="text-flame">•</span>
+                  <span className="text-text">
+                    {scaled.quantity != null && (
+                      <span className="font-semibold">
+                        {formatQuantity(scaled.quantity)}
+                        {scaled.unit ? ` ${scaled.unit}` : ""}{" "}
+                      </span>
+                    )}
+                    {ing.name}
+                    {ing.note && <span className="text-text-faint"> — {ing.note}</span>}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+
+        {/* Steps */}
+        <div className="mt-6">
+          <h2 className="font-display text-lg font-bold text-flame">Method</h2>
+          <ol className="mt-3 space-y-3">
+            {recipe.steps.map((step, i) => (
+              <li key={i} className="flex gap-3">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-flame/15 text-xs font-bold text-flame">
+                  {i + 1}
+                </span>
+                <span className="text-sm leading-relaxed text-text">{step}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+
+        {recipe.tags.length > 0 && (
+          <div className="mt-6 flex flex-wrap gap-2">
+            {recipe.tags.map((t) => (
+              <span key={t} className="rounded-full border border-border px-2.5 py-1 text-xs text-text-dim">
+                #{t}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Notes */}
+        <div className="mt-6">
+          <h2 className="font-display text-lg font-bold text-flame">Your notes</h2>
+          <textarea
+            value={note}
+            onChange={(e) => setNote(recipe.id, e.target.value)}
+            placeholder="Tweaks, timings, what you'd change next time…"
+            rows={3}
+            className="mt-2 w-full rounded-xl border border-border bg-surface-alt px-3 py-2.5 text-sm text-text outline-none placeholder:text-text-faint focus:border-flame"
+          />
+        </div>
+
+        <button
+          onClick={() => {
+            logCooked(recipe.id);
+            window.alert("Logged — nice one! 🍽️");
+          }}
+          className="mt-6 w-full rounded-xl border border-herb/50 bg-herb/10 px-4 py-3 font-bold text-herb"
+        >
+          ✅ I cooked this
+        </button>
+      </div>
+    </div>
+  );
+}

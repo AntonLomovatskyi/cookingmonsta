@@ -1,0 +1,34 @@
+{
+  "name": "cookingmonsta",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && cp dist/index.html dist/404.html",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.110.0",
+    "clsx": "^2.1.1",
+    "firebase": "^12.15.0",
+    "lucide-react": "^0.469.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-router-dom": "^7.1.0",
+    "zod": "^4.4.3",
+    "zustand": "^5.0.14"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.0.0",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "tailwindcss": "^4.0.0",
+    "typescript": "~5.8.3",
+    "vite": "^7.0.0"
+  }
+}
