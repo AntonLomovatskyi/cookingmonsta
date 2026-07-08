@@ -3,22 +3,37 @@ import { z } from "zod";
 /**
  * Single source of truth for the recipe data model.
  *
- * zod schemas are authoritative; the TypeScript types are derived with `z.infer`. This gives us
- * both a typed model (compile time) and runtime validation of stored / AI-extracted recipes.
+ * zod schemas are authoritative; the TypeScript types are derived with `z.infer`.
  *
- * Units are kept as free text ("g", "ml", "tbsp", "clove", "pinch", …) so recipes parsed from any
- * source or language round-trip losslessly. `quantity` is the numeric part used for serving scaling.
+ * Recipes are BILINGUAL: every human-readable field is an `L10n` pair holding English and
+ * Ukrainian text. The UI picks one via the user's language setting; extraction generates both.
+ *
+ * Units policy: metric only — grams / ml / spoons (tbsp, tsp) / counts (pieces, cloves).
+ * No cups, oz, lb or sticks; the extractor converts them.
  */
 
+export const L10nSchema = z.object({ en: z.string(), uk: z.string() });
+export type L10n = z.infer<typeof L10nSchema>;
+
+export type Lang = "en" | "uk";
+
+/** Pick a language from an L10n pair, falling back to whichever side has content. */
+export function pickL(l: L10n, lang: Lang): string;
+export function pickL(l: L10n | undefined, lang: Lang): string | undefined;
+export function pickL(l: L10n | undefined, lang: Lang): string | undefined {
+  if (!l) return undefined;
+  return l[lang] || l.en || l.uk || undefined;
+}
+
 export const IngredientSchema = z.object({
-  /** Full ingredient name, e.g. "smoked paprika" or "яйце". */
-  name: z.string(),
+  /** Ingredient name, e.g. { en: "smoked paprika", uk: "копчена паприка" }. */
+  name: L10nSchema,
   /** Numeric amount for scaling. Omitted for to-taste / unmeasured items. */
   quantity: z.number().optional(),
-  /** Unit as written, e.g. "g", "ml", "tbsp", "clove". */
-  unit: z.string().optional(),
-  /** Free-text qualifier, e.g. "finely chopped", "to taste", "room temperature". */
-  note: z.string().optional(),
+  /** Unit — metric/spoons/count only: g, ml, tbsp, tsp, clove, … (localized). */
+  unit: L10nSchema.optional(),
+  /** Free-text qualifier, e.g. "finely chopped", "to taste" (localized). */
+  note: L10nSchema.optional(),
 });
 export type Ingredient = z.infer<typeof IngredientSchema>;
 
@@ -27,33 +42,33 @@ export const DifficultySchema = z.enum(DIFFICULTIES);
 export type Difficulty = z.infer<typeof DifficultySchema>;
 
 export const RecipeSourceSchema = z.object({
-  /** Where the recipe came from. */
   type: z.enum(["youtube", "manual", "import"]),
   url: z.string().optional(),
   videoId: z.string().optional(),
-  /** Creator / channel name. */
   author: z.string().optional(),
 });
 export type RecipeSource = z.infer<typeof RecipeSourceSchema>;
 
 export const RecipeSchema = z.object({
-  /** URL-safe unique slug. */
+  /** URL-safe unique slug (latin). */
   id: z.string(),
-  /** Display name of the dish. */
-  title: z.string(),
-  /** Short blurb / summary. */
-  description: z.string().optional(),
+  title: L10nSchema,
+  description: L10nSchema.optional(),
   /** Base number of servings the amounts are written for. */
   servings: z.number().int().positive().optional(),
   prepMinutes: z.number().int().nonnegative().optional(),
   cookMinutes: z.number().int().nonnegative().optional(),
-  cuisine: z.string().optional(),
+  cuisine: L10nSchema.optional(),
   difficulty: DifficultySchema.optional(),
-  /** Free-form tags (meal, diet, method, mood, …). */
+  /** Free-form lowercase tags (english slugs, used for filtering). */
   tags: z.array(z.string()),
   ingredients: z.array(IngredientSchema),
-  /** Ordered preparation steps. */
-  steps: z.array(z.string()),
+  /** Ordered preparation steps, each bilingual. */
+  steps: z.array(L10nSchema),
+  /** Estimated kcal per serving. */
+  caloriesPerServing: z.number().positive().optional(),
+  /** Estimated ingredient cost per serving, in ₴ (UAH). */
+  priceUah: z.number().positive().optional(),
   /** Cover image URL (e.g. the YouTube thumbnail). */
   image: z.string().optional(),
   source: RecipeSourceSchema.optional(),

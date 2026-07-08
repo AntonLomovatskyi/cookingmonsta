@@ -1,7 +1,7 @@
-import { Clock, Heart, Youtube } from "lucide-react";
+import { Clock, Flame, Heart, Youtube } from "lucide-react";
 import { Link } from "react-router-dom";
-import clsx from "clsx";
-import { totalMinutes, type Recipe } from "@/types/recipe";
+import { pickL, totalMinutes, type Recipe } from "@/types/recipe";
+import { useLang, useT } from "@/i18n";
 import { useUserStore } from "@/store/userStore";
 
 const EMOJI = ["🍳", "🍜", "🥘", "🍲", "🥗", "🌮", "🍛", "🧁", "🥙", "🍤"];
@@ -12,6 +12,8 @@ function emojiFor(id: string): string {
 }
 
 export function RecipeCard({ recipe }: { recipe: Recipe }) {
+  const lang = useLang();
+  const t = useT();
   const favourites = useUserStore((s) => s.favourites);
   const fav = favourites.includes(recipe.id);
   const time = totalMinutes(recipe);
@@ -44,26 +46,22 @@ export function RecipeCard({ recipe }: { recipe: Recipe }) {
         )}
       </div>
       <div className="flex flex-1 flex-col gap-1 p-2.5">
-        <div className="line-clamp-2 text-sm font-semibold text-text">{recipe.title}</div>
+        <div className="line-clamp-2 text-sm font-semibold text-text">{pickL(recipe.title, lang)}</div>
         <div className="mt-auto flex items-center gap-2 text-[11px] text-text-faint">
           {time != null && (
-            <span className="flex items-center gap-1">
-              <Clock size={11} /> {time}m
+            <span className="flex items-center gap-0.5">
+              <Clock size={11} /> {time}
+              {lang === "uk" ? " хв" : "m"}
             </span>
           )}
-          {recipe.cuisine && <span className="truncate">{recipe.cuisine}</span>}
+          {recipe.caloriesPerServing != null && (
+            <span className="flex items-center gap-0.5">
+              <Flame size={11} /> {recipe.caloriesPerServing} {t.detail.kcal}
+            </span>
+          )}
+          {recipe.priceUah != null && <span>₴{recipe.priceUah}</span>}
         </div>
       </div>
     </Link>
   );
-}
-
-export function difficultyBadge(difficulty?: string): { label: string; cls: string } | null {
-  if (!difficulty) return null;
-  const map: Record<string, string> = {
-    easy: "text-success border-success/50",
-    medium: "text-flame border-flame/50",
-    hard: "text-danger border-danger/50",
-  };
-  return { label: difficulty, cls: clsx("border", map[difficulty] ?? "text-text-dim border-border") };
 }

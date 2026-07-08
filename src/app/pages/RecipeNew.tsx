@@ -3,27 +3,39 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useRecipeById } from "@/data/useRecipes";
 import { slugify } from "@/data/recipes";
+import { useLang, useT } from "@/i18n";
 import { useDraftStore } from "@/store/draftStore";
 import { useUserStore } from "@/store/userStore";
-import { DIFFICULTIES, type Difficulty, type Ingredient, type Recipe, type RecipeSource } from "@/types/recipe";
+import {
+  DIFFICULTIES,
+  pickL,
+  type Difficulty,
+  type Ingredient,
+  type L10n,
+  type Recipe,
+  type RecipeSource,
+} from "@/types/recipe";
+
+/**
+ * The editor works in the ACTIVE app language. The other language side is preserved when a field
+ * is left as-is; brand-new text is copied into both sides (switch language in Settings to refine
+ * the translation). Imported drafts arrive already bilingual from the extractor.
+ */
 
 interface IngredientRow {
   name: string;
   quantity: string;
   unit: string;
   note: string;
+  // original bilingual values, kept so the other language survives edits
+  _name?: L10n;
+  _unit?: L10n;
+  _note?: L10n;
 }
 
-const toRow = (i: Ingredient): IngredientRow => ({
-  name: i.name,
-  quantity: i.quantity != null ? String(i.quantity) : "",
-  unit: i.unit ?? "",
-  note: i.note ?? "",
-});
-
-const blankRow = (): IngredientRow => ({ name: "", quantity: "", unit: "", note: "" });
-
 export default function RecipeNew() {
+  const t = useT();
+  const lang = useLang();
   const nav = useNavigate();
   const [params] = useSearchParams();
   const editId = params.get("edit") ?? undefined;
@@ -42,15 +54,28 @@ export default function RecipeNew() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editId, fromImport]);
 
-  const [title, setTitle] = useState(initial?.title ?? "");
-  const [description, setDescription] = useState(initial?.description ?? "");
+  const toRow = (i: Ingredient): IngredientRow => ({
+    name: pickL(i.name, lang),
+    quantity: i.quantity != null ? String(i.quantity) : "",
+    unit: pickL(i.unit, lang) ?? "",
+    note: pickL(i.note, lang) ?? "",
+    _name: i.name,
+    _unit: i.unit,
+    _note: i.note,
+  });
+  const blankRow = (): IngredientRow => ({ name: "", quantity: "", unit: "", note: "" });
+
+  const [title, setTitle] = useState(initial ? pickL(initial.title, lang) : "");
+  const [description, setDescription] = useState(initial?.description ? pickL(initial.description, lang) : "");
   const [servings, setServings] = useState(initial?.servings != null ? String(initial.servings) : "");
   const [prep, setPrep] = useState(initial?.prepMinutes != null ? String(initial.prepMinutes) : "");
   const [cook, setCook] = useState(initial?.cookMinutes != null ? String(initial.cookMinutes) : "");
-  const [cuisine, setCuisine] = useState(initial?.cuisine ?? "");
+  const [kcal, setKcal] = useState(initial?.caloriesPerServing != null ? String(initial.caloriesPerServing) : "");
+  const [price, setPrice] = useState(initial?.priceUah != null ? String(initial.priceUah) : "");
+  const [cuisine, setCuisine] = useState(initial?.cuisine ? pickL(initial.cuisine, lang) : "");
   const [difficulty, setDifficulty] = useState<Difficulty | "">(initial?.difficulty ?? "");
   const [tagsText, setTagsText] = useState((initial?.tags ?? []).join(", "));
-  const [steps, setSteps] = useState((initial?.steps ?? []).join("\n"));
+  const [steps, setSteps] = useState((initial?.steps ?? []).map((s) => pickL(s, lang)).join("\n"));
   const [ingredients, setIngredients] = useState<IngredientRow[]>(
     initial?.ingredients.length ? initial.ingredients.map(toRow) : [blankRow()],
   );
@@ -60,6 +85,10 @@ export default function RecipeNew() {
   const keptSource: RecipeSource | undefined = initial?.source;
   const keptId = initial?.id;
   const keptCreatedAt = initial?.createdAt;
+  const keptSteps = initial?.steps ?? [];
+  const keptTitle = initial?.title;
+  const keptDescription = initial?.description;
+  const keptCuisine = initial?.cuisine;
 
   // Clear the import draft once consumed so a back-nav doesn't resurrect it.
   useEffect(() => {
@@ -73,11 +102,14 @@ export default function RecipeNew() {
     setIngredients((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== idx) : prev));
   const addRow = () => setIngredients((prev) => [...prev, blankRow()]);
 
-  const splitLines = (raw: string) =>
-    raw
-      .split("\n")
-      .map((s) => s.trim())
-      .filter(Boolean);
+  /** Merge an edited single-language value back into a bilingual pair. */
+  const mkL = (value: string, prev?: L10n): L10n | undefined => {
+    const v = value.trim();
+    if (!v) return undefined;
+    if (prev && pickL(prev, lang) === v) return prev; // unchanged — keep both sides
+    if (prev) return { ...prev, [lang]: v }; // edited — update this side only
+    return { en: v, uk: v }; // new — copy to both sides
+  };
 
   const save = () => {
     const trimmedTitle = title.trim();
@@ -88,11 +120,13 @@ export default function RecipeNew() {
     const built: Ingredient[] = ingredients
       .filter((r) => r.name.trim())
       .map((r) => {
-        const out: Ingredient = { name: r.name.trim() };
+        const out: Ingredient = { name: mkL(r.name, r._name)! };
         const q = r.quantity.trim() ? Number(r.quantity) : undefined;
         if (q != null && !Number.isNaN(q)) out.quantity = q;
-        if (r.unit.trim()) out.unit = r.unit.trim();
-        if (r.note.trim()) out.note = r.note.trim();
+        const unit = mkL(r.unit, r._unit);
+        if (unit) out.unit = unit;
+        const note = mkL(r.note, r._note);
+        if (note) out.note = note;
         return out;
       });
 
@@ -101,22 +135,31 @@ export default function RecipeNew() {
       return v.trim() && !Number.isNaN(n) && n > 0 ? Math.round(n) : undefined;
     };
 
+    const stepLines = steps
+      .split("\n")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    // Preserve the other language per step index when line counts still match.
+    const builtSteps: L10n[] = stepLines.map((line, i) => mkL(line, keptSteps[i])!);
+
     const id = keptId ?? slugify(trimmedTitle);
     const recipe: Recipe = {
       id,
-      title: trimmedTitle,
-      description: description.trim() || undefined,
+      title: mkL(trimmedTitle, keptTitle)!,
+      description: mkL(description, keptDescription),
       servings: num(servings),
       prepMinutes: num(prep),
       cookMinutes: num(cook),
-      cuisine: cuisine.trim() || undefined,
+      caloriesPerServing: num(kcal),
+      priceUah: num(price),
+      cuisine: mkL(cuisine, keptCuisine),
       difficulty: difficulty || undefined,
       tags: tagsText
         .split(",")
-        .map((t) => t.trim().toLowerCase())
+        .map((x) => x.trim().toLowerCase())
         .filter(Boolean),
       ingredients: built,
-      steps: splitLines(steps),
+      steps: builtSteps,
       image: keptImage,
       source: keptSource ?? { type: "manual" },
       createdAt: keptCreatedAt ?? Date.now(),
@@ -129,57 +172,67 @@ export default function RecipeNew() {
   const label = "text-sm font-bold text-flame";
   const input =
     "w-full rounded-xl border border-border bg-surface-alt px-3 py-2.5 text-text outline-none placeholder:text-text-faint focus:border-flame";
-  const heading = fromImport ? "Review imported recipe" : editId ? "Edit recipe" : "New recipe";
+  const heading = fromImport ? t.editor.review : editId ? t.editor.editR : t.editor.newR;
 
   return (
     <div className="px-4 py-4">
       <h1 className="font-display text-2xl font-bold text-text">{heading}</h1>
-      {fromImport && (
-        <p className="mt-1 text-sm text-text-dim">Claude did the heavy lifting — check it over, then save.</p>
-      )}
+      {fromImport && <p className="mt-1 text-sm text-text-dim">{t.editor.reviewSub}</p>}
+      <p className="mt-1 text-xs text-text-faint">{t.editor.langHint}</p>
 
       <div className="mt-5 space-y-5">
         <div className="space-y-2">
-          <div className={label}>Title</div>
+          <div className={label}>{t.editor.title}</div>
           <input
             value={title}
             onChange={(e) => {
               setTitle(e.target.value);
               if (error) setError(false);
             }}
-            placeholder="e.g. Garlic Butter Pasta"
+            placeholder={t.editor.titlePh}
             className={input}
           />
-          {error && <div className="text-sm text-danger">Give it a title.</div>}
+          {error && <div className="text-sm text-danger">{t.editor.needTitle}</div>}
         </div>
 
         <div className="space-y-2">
-          <div className={label}>Description</div>
+          <div className={label}>{t.editor.description}</div>
           <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className={input} />
         </div>
 
         <div className="grid grid-cols-3 gap-2">
           <div className="space-y-2">
-            <div className={label}>Servings</div>
+            <div className={label}>{t.editor.servings}</div>
             <input value={servings} onChange={(e) => setServings(e.target.value)} inputMode="numeric" className={input} />
           </div>
           <div className="space-y-2">
-            <div className={label}>Prep (min)</div>
+            <div className={label}>{t.editor.prep}</div>
             <input value={prep} onChange={(e) => setPrep(e.target.value)} inputMode="numeric" className={input} />
           </div>
           <div className="space-y-2">
-            <div className={label}>Cook (min)</div>
+            <div className={label}>{t.editor.cookMin}</div>
             <input value={cook} onChange={(e) => setCook(e.target.value)} inputMode="numeric" className={input} />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
           <div className="space-y-2">
-            <div className={label}>Cuisine</div>
-            <input value={cuisine} onChange={(e) => setCuisine(e.target.value)} placeholder="e.g. Italian" className={input} />
+            <div className={label}>{t.editor.kcal}</div>
+            <input value={kcal} onChange={(e) => setKcal(e.target.value)} inputMode="numeric" className={input} />
           </div>
           <div className="space-y-2">
-            <div className={label}>Difficulty</div>
+            <div className={label}>{t.editor.price}</div>
+            <input value={price} onChange={(e) => setPrice(e.target.value)} inputMode="numeric" className={input} />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-2">
+            <div className={label}>{t.editor.cuisine}</div>
+            <input value={cuisine} onChange={(e) => setCuisine(e.target.value)} className={input} />
+          </div>
+          <div className="space-y-2">
+            <div className={label}>{t.editor.difficulty}</div>
             <select
               value={difficulty}
               onChange={(e) => setDifficulty(e.target.value as Difficulty | "")}
@@ -188,7 +241,7 @@ export default function RecipeNew() {
               <option value="">—</option>
               {DIFFICULTIES.map((d) => (
                 <option key={d} value={d}>
-                  {d}
+                  {t.difficulty[d]}
                 </option>
               ))}
             </select>
@@ -196,18 +249,13 @@ export default function RecipeNew() {
         </div>
 
         <div className="space-y-2">
-          <div className={label}>Tags</div>
-          <input
-            value={tagsText}
-            onChange={(e) => setTagsText(e.target.value)}
-            placeholder="dinner, vegetarian, quick (comma-separated)"
-            className={input}
-          />
+          <div className={label}>{t.editor.tags}</div>
+          <input value={tagsText} onChange={(e) => setTagsText(e.target.value)} placeholder={t.editor.tagsPh} className={input} />
         </div>
 
         {/* Ingredients */}
         <div className="space-y-2">
-          <div className={label}>Ingredients</div>
+          <div className={label}>{t.editor.ingredients}</div>
           <div className="space-y-2">
             {ingredients.map((row, idx) => (
               <div key={idx} className="flex gap-2">
@@ -215,19 +263,19 @@ export default function RecipeNew() {
                   value={row.quantity}
                   onChange={(e) => updateRow(idx, { quantity: e.target.value })}
                   inputMode="decimal"
-                  placeholder="Qty"
+                  placeholder={t.editor.qty}
                   className="w-16 rounded-xl border border-border bg-surface-alt px-2 py-2.5 text-text outline-none placeholder:text-text-faint focus:border-flame"
                 />
                 <input
                   value={row.unit}
                   onChange={(e) => updateRow(idx, { unit: e.target.value })}
-                  placeholder="Unit"
+                  placeholder={t.editor.unit}
                   className="w-20 rounded-xl border border-border bg-surface-alt px-2 py-2.5 text-text outline-none placeholder:text-text-faint focus:border-flame"
                 />
                 <input
                   value={row.name}
                   onChange={(e) => updateRow(idx, { name: e.target.value })}
-                  placeholder="Ingredient"
+                  placeholder={t.editor.ingredient}
                   className="min-w-0 flex-1 rounded-xl border border-border bg-surface-alt px-3 py-2.5 text-text outline-none placeholder:text-text-faint focus:border-flame"
                 />
                 <button
@@ -246,17 +294,17 @@ export default function RecipeNew() {
             onClick={addRow}
             className="flex items-center gap-1 rounded-full border border-flame px-3 py-1.5 text-sm text-flame"
           >
-            <Plus size={15} /> Add ingredient
+            <Plus size={15} /> {t.editor.addIngredient}
           </button>
         </div>
 
         {/* Steps */}
         <div className="space-y-2">
-          <div className={label}>Method</div>
+          <div className={label}>{t.editor.method}</div>
           <textarea
             value={steps}
             onChange={(e) => setSteps(e.target.value)}
-            placeholder="One step per line"
+            placeholder={t.editor.methodPh}
             rows={7}
             className={input}
           />
@@ -264,20 +312,20 @@ export default function RecipeNew() {
 
         <div className="flex gap-2">
           <button type="button" onClick={save} className="flex-1 rounded-xl bg-flame px-4 py-3 text-center font-bold text-bg">
-            Save recipe
+            {t.editor.save}
           </button>
           {editId && (
             <button
               type="button"
               onClick={() => {
-                if (window.confirm("Delete this recipe?")) {
+                if (window.confirm(t.editor.delConfirm)) {
                   removeUserRecipe(editId);
                   nav("/");
                 }
               }}
               className="rounded-xl border border-border px-4 py-3 text-danger"
             >
-              Delete
+              {t.editor.del}
             </button>
           )}
         </div>

@@ -36,6 +36,9 @@ jobs:
           VITE_FIREBASE_STORAGE_BUCKET: ${{ vars.VITE_FIREBASE_STORAGE_BUCKET }}
           VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.VITE_FIREBASE_MESSAGING_SENDER_ID }}
           VITE_FIREBASE_APP_ID: ${{ vars.VITE_FIREBASE_APP_ID }}
+          # Default YouTube Data API key (public, same GCP project as Firebase). A key entered in
+          # the app's Settings overrides it per-browser.
+          VITE_YOUTUBE_API_KEY: ${{ vars.VITE_YOUTUBE_API_KEY }}
       - run: touch dist/.nojekyll
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

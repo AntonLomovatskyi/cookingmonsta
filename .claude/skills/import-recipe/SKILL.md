@@ -25,16 +25,23 @@ user's Claude subscription.
 
 3. **Extract the recipe** from the title + description (+ anything the user pasted) into the
    `Recipe` shape defined in `src/types/recipe.ts`:
-   - Keep the recipe in the same language as the source.
-   - Ingredients: separate `name`, numeric `quantity`, free-text `unit` ("g", "ml", "tbsp",
-     "clove", …), optional `note` ("finely chopped", "to taste"). Split combined lines.
-   - Steps: clear, ordered, imperative sentences. Ignore sponsor blurbs, links, hashtags,
-     subscribe pleas and unrelated chatter.
-   - Only set `servings` / `prepMinutes` / `cookMinutes` / `cuisine` / `difficulty` when
+   - **BILINGUAL**: every text field is an `L10n` pair `{ en, uk }` — write BOTH English and
+     Ukrainian, translating whichever the source lacks (natural cooking language, not literal).
+   - **UNITS — metric/spoons/counts ONLY**: g/г, ml/мл, tbsp/ст. л., tsp/ч. л., or countable
+     pieces (eggs, cloves/зубчики). NEVER cups, oz, lb or sticks — convert them (1 cup flour
+     ≈ 125 g, 1 cup sugar ≈ 200 g, 1 cup butter ≈ 227 g, 1 cup liquid = 240 ml, 1 stick butter
+     = 113 g, 1 oz = 28 g). Prefer the source's own gram values when given alongside cups.
+   - Ingredients: `name` (L10n), numeric `quantity`, `unit` (L10n), optional `note` (L10n).
+     Split combined lines.
+   - Steps: `L10n[]` — clear, ordered, imperative sentences in both languages. Ignore sponsor
+     blurbs, links, hashtags, subscribe pleas and unrelated chatter.
+   - Only set `servings` / `prepMinutes` / `cookMinutes` / `cuisine` (L10n) / `difficulty` when
      reasonably supported by the source; omit otherwise.
-   - Add a few lowercase `tags` (meal type, diet, method, cuisine feel).
-   - `id`: lowercase-kebab slug of the title (unique vs existing recipes in `src/data/imported.ts`
-     and `src/data/seed.ts` — suffix `-2` etc. on collision).
+   - **`caloriesPerServing`**: estimate kcal per serving from the ingredient amounts.
+   - **`priceUah`**: estimate the ingredient cost PER SERVING in ₴ at Ukrainian supermarket prices.
+   - Add a few lowercase ENGLISH `tags` (meal type, diet, method, cuisine feel).
+   - `id`: lowercase-kebab slug of the English title (unique vs existing recipes in
+     `src/data/imported.ts` and `src/data/seed.ts` — suffix `-2` etc. on collision).
    - `image`: the `thumbnail` from step 1.
    - `source`: `{ type: "youtube", url, videoId, author }`.
    - `createdAt`: current epoch ms (`Date.now()` value — compute it, don't write the call).

@@ -10,9 +10,13 @@ initSync();
 
 function Root() {
   const theme = useUserStore((s) => s.theme);
+  const language = useUserStore((s) => s.language);
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
+  useEffect(() => {
+    document.documentElement.lang = language;
+  }, [language]);
   return <RouterProvider router={router} />;
 }
 

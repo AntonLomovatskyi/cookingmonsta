@@ -10,6 +10,7 @@ export function getSnapshot(): PersistedData {
     userRecipes: s.userRecipes,
     recentlyViewed: s.recentlyViewed,
     theme: s.theme,
+    language: s.language,
     aiModel: s.aiModel,
   };
 }

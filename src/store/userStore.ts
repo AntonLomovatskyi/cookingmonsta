@@ -4,10 +4,12 @@
  *
  * The synced subset is `PersistedData` (see below). API keys are deliberately EXCLUDED from it, so
  * they never leave this browser — they are not pushed to Firestore and not written to backups.
+ *
+ * v2 migration: recipes became bilingual (plain strings → {en, uk} pairs).
  */
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import type { Recipe } from "@/types/recipe";
+import type { L10n, Lang, Recipe } from "@/types/recipe";
 
 /** Extraction models the user can choose from (Settings). Ordered cheap → powerful. */
 export const AI_MODELS = [
@@ -25,12 +27,13 @@ export interface CookEntry {
 
 export interface UserState {
   favourites: string[]; // recipe ids
-  notes: Record<string, string>; // id -> personal note
+  notes: Record<string, string>; // id -> personal note (single language, personal)
   cooked: CookEntry[]; // cook log, most-recent first
   recentlyViewed: string[]; // recipe ids, most-recent first (local only)
   /** User-created & imported recipes, merged into the catalog at runtime. */
   userRecipes: Recipe[];
   theme: "dark" | "light";
+  language: Lang;
   /** Which Claude model extracts recipes. */
   aiModel: AiModel;
   /** Anthropic API key — local only, never synced. */
@@ -39,6 +42,7 @@ export interface UserState {
   youtubeKey: string;
 
   setTheme: (t: "dark" | "light") => void;
+  setLanguage: (l: Lang) => void;
   setAiModel: (m: AiModel) => void;
   setAnthropicKey: (k: string) => void;
   setYoutubeKey: (k: string) => void;
@@ -56,8 +60,44 @@ export interface UserState {
 /** The user-data fields that are exported/imported and cloud-synced. API keys are NOT included. */
 export type PersistedData = Pick<
   UserState,
-  "favourites" | "notes" | "cooked" | "userRecipes" | "recentlyViewed" | "theme" | "aiModel"
+  "favourites" | "notes" | "cooked" | "userRecipes" | "recentlyViewed" | "theme" | "language" | "aiModel"
 >;
+
+/* ---------- v1 → v2 migration: plain strings → bilingual L10n pairs ---------- */
+
+function toL(v: unknown): L10n | undefined {
+  if (v == null) return undefined;
+  if (typeof v === "string") return v.trim() ? { en: v, uk: v } : undefined;
+  const o = v as { en?: unknown; uk?: unknown };
+  if (typeof o.en === "string" || typeof o.uk === "string") {
+    const e = typeof o.en === "string" ? o.en : "";
+    const u = typeof o.uk === "string" ? o.uk : "";
+    return e || u ? { en: e || u, uk: u || e } : undefined;
+  }
+  return undefined;
+}
+
+function migrateRecipeV2(r: unknown): Recipe {
+  const o = r as Record<string, unknown>;
+  const ings = Array.isArray(o.ingredients) ? o.ingredients : [];
+  const steps = Array.isArray(o.steps) ? o.steps : [];
+  return {
+    ...(o as object),
+    title: toL(o.title) ?? { en: "Untitled", uk: "Без назви" },
+    description: toL(o.description),
+    cuisine: toL(o.cuisine),
+    ingredients: ings.map((i) => {
+      const io = i as Record<string, unknown>;
+      return {
+        name: toL(io.name) ?? { en: "?", uk: "?" },
+        quantity: typeof io.quantity === "number" ? io.quantity : undefined,
+        unit: toL(io.unit),
+        note: toL(io.note),
+      };
+    }),
+    steps: steps.map((s) => toL(s)).filter((s): s is L10n => !!s),
+  } as Recipe;
+}
 
 export const useUserStore = create<UserState>()(
   persist(
@@ -68,11 +108,13 @@ export const useUserStore = create<UserState>()(
       recentlyViewed: [],
       userRecipes: [],
       theme: "dark",
+      language: "en",
       aiModel: "claude-haiku-4-5",
       anthropicKey: "",
       youtubeKey: "",
 
       setTheme: (t) => set({ theme: t }),
+      setLanguage: (l) => set({ language: l }),
       setAiModel: (m) => set({ aiModel: m }),
       setAnthropicKey: (k) => set({ anthropicKey: k.trim() }),
       setYoutubeKey: (k) => set({ youtubeKey: k.trim() }),
@@ -103,16 +145,25 @@ export const useUserStore = create<UserState>()(
           favourites: d.favourites ?? s.favourites,
           notes: d.notes ?? s.notes,
           cooked: d.cooked ?? s.cooked,
-          userRecipes: d.userRecipes ?? s.userRecipes,
+          // Backups may predate the bilingual schema — normalise on the way in.
+          userRecipes: d.userRecipes ? d.userRecipes.map(migrateRecipeV2) : s.userRecipes,
           recentlyViewed: d.recentlyViewed ?? s.recentlyViewed,
           theme: d.theme ?? s.theme,
+          language: d.language ?? s.language,
           aiModel: d.aiModel ?? s.aiModel,
         })),
     }),
     {
       name: "cookingmonsta/v1/user",
-      version: 1,
+      version: 2,
       storage: createJSONStorage(() => localStorage),
+      migrate: (persisted, version) => {
+        const s = persisted as Partial<UserState>;
+        if (version < 2 && Array.isArray(s.userRecipes)) {
+          s.userRecipes = s.userRecipes.map(migrateRecipeV2);
+        }
+        return s as UserState;
+      },
     },
   ),
 );

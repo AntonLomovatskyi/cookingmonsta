@@ -4,13 +4,18 @@ import { Link, useNavigate } from "react-router-dom";
 import { extractRecipe } from "@/lib/ai";
 import { fetchYouTube, parseVideoId } from "@/lib/youtube";
 import { slugify } from "@/data/recipes";
+import { useT } from "@/i18n";
 import { AI_MODELS, useUserStore } from "@/store/userStore";
 import { useDraftStore } from "@/store/draftStore";
 import type { Recipe } from "@/types/recipe";
 
 type Phase = "idle" | "fetching" | "extracting" | "error";
 
+/** Build-time default YouTube key (public, referrer-restricted) — Settings key overrides it. */
+const DEFAULT_YT_KEY = (import.meta.env.VITE_YOUTUBE_API_KEY as string | undefined) ?? "";
+
 export default function Import() {
+  const t = useT();
   const nav = useNavigate();
   const anthropicKey = useUserStore((s) => s.anthropicKey);
   const youtubeKey = useUserStore((s) => s.youtubeKey);
@@ -25,11 +30,12 @@ export default function Import() {
 
   const modelLabel = AI_MODELS.find((m) => m.id === aiModel)?.label ?? aiModel;
   const busy = phase === "fetching" || phase === "extracting";
+  const effectiveYtKey = youtubeKey || DEFAULT_YT_KEY;
 
   const run = async () => {
     setError("");
     if (!anthropicKey) {
-      setError("Add your Anthropic API key in Settings to enable extraction.");
+      setError(t.importPage.errNoKey);
       setPhase("error");
       return;
     }
@@ -46,7 +52,7 @@ export default function Import() {
 
       if (isYouTube) {
         setPhase("fetching");
-        const yt = await fetchYouTube(trimmed, youtubeKey || undefined);
+        const yt = await fetchYouTube(trimmed, effectiveYtKey || undefined);
         title = yt.title;
         author = yt.author;
         description = yt.description;
@@ -58,15 +64,11 @@ export default function Import() {
         // No description available (no/broken Data API key) and nothing pasted → explain why.
         if (!yt.usedDataApi && !pasted.trim()) {
           setPhase("idle");
-          setError(
-            yt.apiError
-              ? `YouTube API rejected your key: ${yt.apiError}. In Google Cloud console, enable "YouTube Data API v3" and allow it under the key's API restrictions. Meanwhile, paste the video description below to continue.`
-              : "Fetched the video title, but I need the recipe text. Paste the video description below, or add a YouTube Data API key in Settings to fetch it automatically.",
-          );
+          setError(yt.apiError ? t.importPage.errYt.replace("{err}", yt.apiError) : t.importPage.errNeedText);
           return;
         }
       } else if (!trimmed && !pasted.trim()) {
-        setError("Paste a YouTube link or some recipe text to get started.");
+        setError(t.importPage.errNothing);
         setPhase("error");
         return;
       }
@@ -78,15 +80,13 @@ export default function Import() {
         aiModel,
       );
 
-      const id = slugify(extracted.title);
+      const id = slugify(extracted.title.en || extracted.title.uk);
       const recipe: Recipe = {
         ...extracted,
         id,
         image: thumbnail,
         createdAt: Date.now(),
-        source: isYouTube
-          ? { type: "youtube", url: trimmed, videoId, author }
-          : { type: "import" },
+        source: isYouTube ? { type: "youtube", url: trimmed, videoId, author } : { type: "import" },
       };
 
       setDraft(recipe);
@@ -105,14 +105,14 @@ export default function Import() {
           <Sparkles size={22} />
         </div>
         <div>
-          <h1 className="font-display text-2xl font-bold text-text">Import a recipe</h1>
-          <p className="text-sm text-text-dim">Paste a cooking video — extraction by {modelLabel}.</p>
+          <h1 className="font-display text-2xl font-bold text-text">{t.importPage.title}</h1>
+          <p className="text-sm text-text-dim">{t.importPage.sub.replace("{model}", modelLabel)}</p>
         </div>
       </div>
 
       {/* URL input */}
       <div className="mt-5">
-        <label className="text-sm font-bold text-flame">YouTube link</label>
+        <label className="text-sm font-bold text-flame">{t.importPage.link}</label>
         <div className="relative mt-2">
           <Youtube size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-danger" />
           <input
@@ -132,12 +132,12 @@ export default function Import() {
       {/* Paste fallback */}
       <div className="mt-4">
         <label className="text-sm font-bold text-flame">
-          Recipe text <span className="font-normal text-text-faint">(optional / fallback)</span>
+          {t.importPage.text} <span className="font-normal text-text-faint">{t.importPage.optional}</span>
         </label>
         <textarea
           value={pasted}
           onChange={(e) => setPasted(e.target.value)}
-          placeholder="Paste the video description or any recipe text here. Handy when you haven't set a YouTube Data API key — or to import from anywhere, not just YouTube."
+          placeholder={t.importPage.textPh}
           rows={5}
           className="mt-2 w-full rounded-xl border border-border bg-surface-alt px-3 py-2.5 text-sm text-text outline-none placeholder:text-text-faint focus:border-flame"
         />
@@ -147,15 +147,10 @@ export default function Import() {
         <div className="mt-4 flex items-start gap-2 rounded-xl border border-danger/40 bg-danger/10 p-3 text-sm text-danger">
           <AlertCircle size={16} className="mt-0.5 shrink-0" />
           <div>
-            {error}
-            {error.includes("Settings") && (
-              <>
-                {" "}
-                <Link to="/settings" className="underline">
-                  Open Settings
-                </Link>
-              </>
-            )}
+            {error}{" "}
+            <Link to="/settings" className="underline">
+              {t.importPage.openSettings}
+            </Link>
           </div>
         </div>
       )}
@@ -168,35 +163,32 @@ export default function Import() {
         {busy ? (
           <>
             <Loader2 size={18} className="animate-spin" />
-            {phase === "fetching" ? "Fetching video…" : "Extracting recipe…"}
+            {phase === "fetching" ? t.importPage.fetching : t.importPage.extracting}
           </>
         ) : (
           <>
-            <Sparkles size={18} /> Extract recipe
+            <Sparkles size={18} /> {t.importPage.extract}
           </>
         )}
       </button>
 
       {!anthropicKey && (
         <p className="mt-3 text-center text-xs text-text-faint">
-          You'll need an Anthropic API key.{" "}
+          {t.importPage.needKey}{" "}
           <Link to="/settings" className="text-flame underline">
-            Add it in Settings
+            {t.importPage.addKey}
           </Link>
           .
         </p>
       )}
 
       <div className="mt-8 rounded-xl border border-border bg-surface p-4 text-sm text-text-dim">
-        <div className="mb-1 font-semibold text-text">How it works</div>
+        <div className="mb-1 font-semibold text-text">{t.importPage.how}</div>
         <ol className="list-decimal space-y-1 pl-4">
-          <li>Paste a YouTube cooking video link.</li>
-          <li>
-            With a YouTube Data API key set, the description &amp; top comments are fetched
-            automatically. Without one, paste the description into the box above.
-          </li>
-          <li>Claude ({modelLabel}) reads it and structures the ingredients &amp; steps.</li>
-          <li>You review &amp; tweak, then save it to your collection.</li>
+          <li>{t.importPage.how1}</li>
+          <li>{t.importPage.how2}</li>
+          <li>{t.importPage.how3.replace("{model}", modelLabel)}</li>
+          <li>{t.importPage.how4}</li>
         </ol>
       </div>
     </div>

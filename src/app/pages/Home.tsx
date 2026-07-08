@@ -4,20 +4,26 @@ import { Link, useNavigate } from "react-router-dom";
 import { Chip } from "@/components/Chip";
 import { RecipeCard } from "@/components/RecipeCard";
 import { useAllRecipes, useAllTags } from "@/data/useRecipes";
-import { totalMinutes, type Recipe } from "@/types/recipe";
+import { useLang, useT } from "@/i18n";
+import { pickL, totalMinutes, type Lang, type Recipe } from "@/types/recipe";
 import { useFilterStore, type SortMode } from "@/store/filterStore";
 import { useUserStore } from "@/store/userStore";
 
-const SORTS: { key: SortMode; label: string }[] = [
-  { key: "recent", label: "Newest" },
-  { key: "title", label: "A–Z" },
-  { key: "time", label: "Quickest" },
-  { key: "cooked", label: "Most cooked" },
-];
+const SORT_KEYS: SortMode[] = ["recent", "title", "time", "cooked"];
 
 function matches(r: Recipe, q: string): boolean {
   if (!q) return true;
-  const hay = [r.title, r.cuisine, ...r.tags, ...r.ingredients.map((i) => i.name)].join(" ").toLowerCase();
+  const hay = [
+    r.title.en,
+    r.title.uk,
+    r.cuisine?.en,
+    r.cuisine?.uk,
+    ...r.tags,
+    ...r.ingredients.flatMap((i) => [i.name.en, i.name.uk]),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
   return q
     .toLowerCase()
     .split(/\s+/)
@@ -25,6 +31,8 @@ function matches(r: Recipe, q: string): boolean {
 }
 
 export default function Home() {
+  const t = useT();
+  const lang: Lang = useLang();
   const nav = useNavigate();
   const all = useAllRecipes();
   const tags = useAllTags();
@@ -39,12 +47,12 @@ export default function Home() {
 
   const list = useMemo(() => {
     let base = all.filter((r) => matches(r, query));
-    if (activeTags.length) base = base.filter((r) => activeTags.every((t) => r.tags.includes(t)));
+    if (activeTags.length) base = base.filter((r) => activeTags.every((tg) => r.tags.includes(tg)));
     const sorted = [...base];
     sorted.sort((a, b) => {
       switch (sort) {
         case "title":
-          return a.title.localeCompare(b.title);
+          return pickL(a.title, lang).localeCompare(pickL(b.title, lang), lang);
         case "time":
           return (totalMinutes(a) ?? 9999) - (totalMinutes(b) ?? 9999);
         case "cooked":
@@ -54,11 +62,11 @@ export default function Home() {
       }
     });
     return sorted;
-  }, [all, query, activeTags, sort, cookCounts]);
+  }, [all, query, activeTags, sort, cookCounts, lang]);
 
   const cycleSort = () => {
-    const i = SORTS.findIndex((s) => s.key === sort);
-    setSort(SORTS[(i + 1) % SORTS.length].key);
+    const i = SORT_KEYS.indexOf(sort);
+    setSort(SORT_KEYS[(i + 1) % SORT_KEYS.length]);
   };
 
   return (
@@ -69,7 +77,7 @@ export default function Home() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search recipes, ingredients…"
+            placeholder={t.home.search}
             className="w-full rounded-xl border border-border bg-surface-alt py-2.5 pl-9 pr-3 text-text outline-none placeholder:text-text-faint focus:border-flame"
           />
         </div>
@@ -84,8 +92,8 @@ export default function Home() {
           <Sparkles size={20} />
         </div>
         <div className="min-w-0">
-          <div className="text-sm font-bold text-flame">Import from YouTube</div>
-          <div className="truncate text-xs text-text-dim">Paste a link — Claude pulls out the ingredients & steps.</div>
+          <div className="text-sm font-bold text-flame">{t.home.importTitle}</div>
+          <div className="truncate text-xs text-text-dim">{t.home.importSub}</div>
         </div>
       </Link>
 
@@ -94,15 +102,17 @@ export default function Home() {
           onClick={cycleSort}
           className="flex items-center gap-1 rounded-full border border-border px-3 py-1.5 text-sm text-text-dim"
         >
-          <ArrowDownUp size={14} /> {SORTS.find((s) => s.key === sort)?.label}
+          <ArrowDownUp size={14} /> {t.home.sort[sort]}
         </button>
-        <span className="text-xs text-text-faint">{list.length} recipes</span>
+        <span className="text-xs text-text-faint">
+          {list.length} {t.home.count}
+        </span>
       </div>
 
       {tags.length > 0 && (
         <div className="no-scrollbar mt-2 flex gap-2 overflow-x-auto px-4">
-          {tags.slice(0, 20).map((t) => (
-            <Chip key={t} label={t} selected={activeTags.includes(t)} onClick={() => toggleTag(t)} />
+          {tags.slice(0, 20).map((tg) => (
+            <Chip key={tg} label={tg} selected={activeTags.includes(tg)} onClick={() => toggleTag(tg)} />
           ))}
         </div>
       )}
@@ -116,9 +126,9 @@ export default function Home() {
       {list.length === 0 && (
         <div className="px-6 py-16 text-center text-text-dim">
           <div className="text-4xl">🍽️</div>
-          <div className="mt-3">No recipes match.</div>
+          <div className="mt-3">{t.home.none}</div>
           <button onClick={() => nav("/import")} className="mt-4 rounded-full bg-flame px-4 py-2 font-bold text-bg">
-            Import your first one
+            {t.home.importFirst}
           </button>
         </div>
       )}

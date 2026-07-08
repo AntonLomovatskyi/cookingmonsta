@@ -1,17 +1,19 @@
 import { ChevronLeft, Heart, Home, Settings, Sparkles } from "lucide-react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import clsx from "clsx";
+import { useT } from "@/i18n";
 
 const TAB_ROOTS = ["/", "/import", "/favourites"];
 
 export function Layout() {
+  const t = useT();
   const nav = useNavigate();
   const loc = useLocation();
   const isTabRoot = TAB_ROOTS.includes(loc.pathname);
   const tabs = [
-    { to: "/", label: "Recipes", Icon: Home, end: true },
-    { to: "/import", label: "Import", Icon: Sparkles, end: false },
-    { to: "/favourites", label: "Saved", Icon: Heart, end: false },
+    { to: "/", label: t.tabs.recipes, Icon: Home, end: true },
+    { to: "/import", label: t.tabs.import, Icon: Sparkles, end: false },
+    { to: "/favourites", label: t.tabs.saved, Icon: Heart, end: false },
   ];
   return (
     <div className="mx-auto flex h-full max-w-3xl flex-col">
