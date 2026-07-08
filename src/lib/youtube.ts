@@ -19,6 +19,8 @@ export interface YouTubeContent {
   comments: string[];
   /** True when the Data API key was used and returned the description. */
   usedDataApi: boolean;
+  /** Error message from the Data API (e.g. 403 API_KEY_SERVICE_BLOCKED), so the UI can explain. */
+  apiError?: string;
 }
 
 /** Pull the 11-char video id out of any common YouTube URL shape. Returns null if not a YT link. */
@@ -60,6 +62,7 @@ interface DataApiResult {
   title?: string;
   author?: string;
   comments: string[];
+  error?: string;
 }
 
 async function fetchDataApi(videoId: string, key: string): Promise<DataApiResult> {
@@ -70,7 +73,12 @@ async function fetchDataApi(videoId: string, key: string): Promise<DataApiResult
     );
     const vJson = (await vRes.json()) as {
       items?: { snippet?: { description?: string; title?: string; channelTitle?: string } }[];
+      error?: { message?: string; errors?: { reason?: string }[] };
     };
+    if (vJson.error) {
+      const reason = vJson.error.errors?.[0]?.reason;
+      out.error = [reason, vJson.error.message].filter(Boolean).join(" — ");
+    }
     const snip = vJson.items?.[0]?.snippet;
     out.description = snip?.description;
     out.title = snip?.title;
@@ -116,6 +124,7 @@ export async function fetchYouTube(url: string, dataApiKey?: string): Promise<Yo
     base.description = api.description;
     base.comments = api.comments;
     base.usedDataApi = Boolean(api.description || api.comments.length);
+    base.apiError = api.error;
   }
 
   return base;

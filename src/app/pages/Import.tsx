@@ -55,11 +55,13 @@ export default function Import() {
         videoId = yt.videoId;
         setFetchedTitle(yt.title ?? null);
 
-        // No description available (no Data API key) and nothing pasted → ask the user to paste.
+        // No description available (no/broken Data API key) and nothing pasted → explain why.
         if (!yt.usedDataApi && !pasted.trim()) {
           setPhase("idle");
           setError(
-            "Fetched the video title, but I need the recipe text. Paste the video description below, or add a YouTube Data API key in Settings to fetch it automatically.",
+            yt.apiError
+              ? `YouTube API rejected your key: ${yt.apiError}. In Google Cloud console, enable "YouTube Data API v3" and allow it under the key's API restrictions. Meanwhile, paste the video description below to continue.`
+              : "Fetched the video title, but I need the recipe text. Paste the video description below, or add a YouTube Data API key in Settings to fetch it automatically.",
           );
           return;
         }
