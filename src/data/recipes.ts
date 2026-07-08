@@ -4,14 +4,18 @@
  * screens that import from `@/data/recipes` never change.
  */
 import type { Recipe } from "@/types/recipe";
+import { IMPORTED_RECIPES } from "./imported";
 import { SEED_RECIPES } from "./seed";
 
+/** Bundled catalog = repo-committed imports (via /import-recipe) + starter seeds. */
+const BUNDLED: Recipe[] = [...IMPORTED_RECIPES, ...SEED_RECIPES];
+
 export function getSeedRecipes(): Recipe[] {
-  return SEED_RECIPES;
+  return BUNDLED;
 }
 
 export function getSeedRecipeById(id: string): Recipe | undefined {
-  return SEED_RECIPES.find((r) => r.id === id);
+  return BUNDLED.find((r) => r.id === id);
 }
 
 /** URL-safe slug from a title, with a fallback so ids are always unique-ish. */

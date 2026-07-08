@@ -16,6 +16,20 @@ Claude is called **directly from the browser** with **your own Anthropic API key
 Settings and kept only in this browser's `localStorage` (never bundled into the deploy, never synced
 to the cloud). That keeps the app fully static — no backend, no server-side secrets.
 
+### Free alternative: `/import-recipe` via Claude Code
+
+The in-app path needs API credits (separate from a Claude Pro/Max subscription). If you have a
+subscription, use the bundled **Claude Code skill** instead — it's covered by your plan:
+
+```
+# in Claude Code, inside this repo
+/import-recipe https://youtube.com/watch?v=…
+```
+
+Claude Code fetches the video (`scripts/fetch-youtube.mjs`, no API key needed), extracts the
+recipe itself, commits it to `src/data/imported.ts`, and pushes — the Pages deploy puts it on all
+your devices in about a minute. Phone-friendly on-the-go imports still use the in-app API path.
+
 ## Run
 
 ```bash
