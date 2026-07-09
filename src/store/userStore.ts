@@ -57,11 +57,15 @@ export interface UserState {
   importData: (d: Partial<PersistedData>) => void;
 }
 
-/** The user-data fields that are exported/imported and cloud-synced. API keys are NOT included. */
+/**
+ * The user-data fields that are exported/imported and cloud-synced. `anthropicKey` is optional:
+ * cloud sync includes it (so signing in brings your key to a new device); backup files omit it.
+ * The YouTube key stays local-only — a public default ships via VITE_YOUTUBE_API_KEY anyway.
+ */
 export type PersistedData = Pick<
   UserState,
   "favourites" | "notes" | "cooked" | "userRecipes" | "recentlyViewed" | "theme" | "language" | "aiModel"
->;
+> & { anthropicKey?: string };
 
 /* ---------- v1 → v2 migration: plain strings → bilingual L10n pairs ---------- */
 
@@ -151,6 +155,7 @@ export const useUserStore = create<UserState>()(
           theme: d.theme ?? s.theme,
           language: d.language ?? s.language,
           aiModel: d.aiModel ?? s.aiModel,
+          anthropicKey: d.anthropicKey || s.anthropicKey,
         })),
     }),
     {

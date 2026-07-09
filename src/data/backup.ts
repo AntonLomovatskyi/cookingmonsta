@@ -1,4 +1,13 @@
-/** Snapshot / export / import of the synced user-data subset (excludes API keys). */
+/**
+ * Snapshot / export / import of the synced user-data subset.
+ *
+ * Two snapshot flavours:
+ * - `getSnapshot()`      → backup FILE export — excludes the Anthropic key so a shared backup
+ *                          never leaks it.
+ * - `getCloudSnapshot()` → Firestore sync — includes the Anthropic key, so signing in with the
+ *                          same Google account on another device brings the key along. The
+ *                          users/{uid} doc is readable only by the signed-in owner (rules).
+ */
 import { useUserStore, type PersistedData } from "@/store/userStore";
 
 export function getSnapshot(): PersistedData {
@@ -13,6 +22,10 @@ export function getSnapshot(): PersistedData {
     language: s.language,
     aiModel: s.aiModel,
   };
+}
+
+export function getCloudSnapshot(): PersistedData {
+  return { ...getSnapshot(), anthropicKey: useUserStore.getState().anthropicKey };
 }
 
 export function exportData(at: number): void {

@@ -227,7 +227,7 @@ export const en: Strings = {
   settings: {
     aiImport: "AI import",
     anthropicKey: "Anthropic API key",
-    keyNote: "Stored only in this browser — never bundled into the site or synced.",
+    keyNote: "Stored in this browser; when you sign in with Google it also syncs privately to your account, so your other devices get it automatically. Never bundled into the site or included in backup files.",
     model: "Extraction model",
     ytKey: "YouTube Data API key",
     ytOptional: "(optional)",
