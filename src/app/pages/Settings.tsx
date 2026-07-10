@@ -161,8 +161,6 @@ export default function Settings() {
   const setAiModel = useUserStore((s) => s.setAiModel);
   const anthropicKey = useUserStore((s) => s.anthropicKey);
   const setAnthropicKey = useUserStore((s) => s.setAnthropicKey);
-  const youtubeKey = useUserStore((s) => s.youtubeKey);
-  const setYoutubeKey = useUserStore((s) => s.setYoutubeKey);
   const favourites = useUserStore((s) => s.favourites);
   const cooked = useUserStore((s) => s.cooked);
   const userRecipes = useUserStore((s) => s.userRecipes);
@@ -214,13 +212,6 @@ export default function Settings() {
             </div>
           </div>
 
-          <div>
-            <div className="mb-1.5 text-sm text-text-dim">
-              {t.settings.ytKey} <span className="text-text-faint">{t.settings.ytOptional}</span>
-            </div>
-            <KeyInput value={youtubeKey} onChange={setYoutubeKey} placeholder="AIza…" />
-            <p className="mt-1.5 text-xs text-text-faint">{t.settings.ytNote}</p>
-          </div>
         </div>
       </Card>
 

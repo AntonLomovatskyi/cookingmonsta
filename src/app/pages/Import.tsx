@@ -18,7 +18,6 @@ export default function Import() {
   const t = useT();
   const nav = useNavigate();
   const anthropicKey = useUserStore((s) => s.anthropicKey);
-  const youtubeKey = useUserStore((s) => s.youtubeKey);
   const aiModel = useUserStore((s) => s.aiModel);
   const setDraft = useDraftStore((s) => s.setDraft);
 
@@ -30,7 +29,6 @@ export default function Import() {
 
   const modelLabel = AI_MODELS.find((m) => m.id === aiModel)?.label ?? aiModel;
   const busy = phase === "fetching" || phase === "extracting";
-  const effectiveYtKey = youtubeKey || DEFAULT_YT_KEY;
 
   const run = async () => {
     setError("");
@@ -52,7 +50,7 @@ export default function Import() {
 
       if (isYouTube) {
         setPhase("fetching");
-        const yt = await fetchYouTube(trimmed, effectiveYtKey || undefined);
+        const yt = await fetchYouTube(trimmed, DEFAULT_YT_KEY || undefined);
         title = yt.title;
         author = yt.author;
         description = yt.description;

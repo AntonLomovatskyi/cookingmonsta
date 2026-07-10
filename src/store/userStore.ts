@@ -36,16 +36,13 @@ export interface UserState {
   language: Lang;
   /** Which Claude model extracts recipes. */
   aiModel: AiModel;
-  /** Anthropic API key — local only, never synced. */
+  /** Anthropic API key — stored locally; cloud-synced via getCloudSnapshot(). */
   anthropicKey: string;
-  /** Optional YouTube Data API key — local only, never synced. */
-  youtubeKey: string;
 
   setTheme: (t: "dark" | "light") => void;
   setLanguage: (l: Lang) => void;
   setAiModel: (m: AiModel) => void;
   setAnthropicKey: (k: string) => void;
-  setYoutubeKey: (k: string) => void;
   toggleFavourite: (id: string) => void;
   setNote: (id: string, text: string) => void;
   logCooked: (id: string) => void;
@@ -60,7 +57,7 @@ export interface UserState {
 /**
  * The user-data fields that are exported/imported and cloud-synced. `anthropicKey` is optional:
  * cloud sync includes it (so signing in brings your key to a new device); backup files omit it.
- * The YouTube key stays local-only — a public default ships via VITE_YOUTUBE_API_KEY anyway.
+ * YouTube fetching uses the app-wide VITE_YOUTUBE_API_KEY — no per-user key.
  */
 export type PersistedData = Pick<
   UserState,
@@ -115,13 +112,11 @@ export const useUserStore = create<UserState>()(
       language: "en",
       aiModel: "claude-haiku-4-5",
       anthropicKey: "",
-      youtubeKey: "",
 
       setTheme: (t) => set({ theme: t }),
       setLanguage: (l) => set({ language: l }),
       setAiModel: (m) => set({ aiModel: m }),
       setAnthropicKey: (k) => set({ anthropicKey: k.trim() }),
-      setYoutubeKey: (k) => set({ youtubeKey: k.trim() }),
       toggleFavourite: (id) =>
         set((s) => ({
           favourites: s.favourites.includes(id) ? s.favourites.filter((x) => x !== id) : [...s.favourites, id],
@@ -160,13 +155,14 @@ export const useUserStore = create<UserState>()(
     }),
     {
       name: "cookingmonsta/v1/user",
-      version: 2,
+      version: 3,
       storage: createJSONStorage(() => localStorage),
       migrate: (persisted, version) => {
-        const s = persisted as Partial<UserState>;
+        const s = persisted as Partial<UserState> & { youtubeKey?: string };
         if (version < 2 && Array.isArray(s.userRecipes)) {
           s.userRecipes = s.userRecipes.map(migrateRecipeV2);
         }
+        if (version < 3) delete s.youtubeKey; // per-user YouTube key removed; app-wide key only
         return s as UserState;
       },
     },

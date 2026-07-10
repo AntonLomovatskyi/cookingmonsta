@@ -43,10 +43,12 @@ pnpm typecheck    # tsc --noEmit
 ## Keys you enter in-app (Settings)
 
 - **Anthropic API key** — required for import. Get one at
-  [console.anthropic.com](https://console.anthropic.com/settings/keys).
-- **YouTube Data API key** — _optional_. Lets the app auto-fetch a video's description & comments.
-  Without it, paste the description into the box yourself (works for any recipe text, not just
-  YouTube). Create one in Google Cloud console → enable "YouTube Data API v3" → API key.
+  [console.anthropic.com](https://console.anthropic.com/settings/keys). Synced privately to your
+  Google account when you sign in.
+
+YouTube fetching needs no setup: the app ships with a public, restricted Data API key
+(`VITE_YOUTUBE_API_KEY` repo variable) that auto-fetches descriptions & comments. If a fetch
+fails, paste the description into the import box (works for any recipe text, not just YouTube).
 
 ## Architecture
 

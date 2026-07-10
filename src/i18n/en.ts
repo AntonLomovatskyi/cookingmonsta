@@ -89,9 +89,6 @@ export interface Strings {
     anthropicKey: string;
     keyNote: string;
     model: string;
-    ytKey: string;
-    ytOptional: string;
-    ytNote: string;
     sync: string;
     syncOff: string;
     signedInAs: string;
@@ -170,7 +167,7 @@ export const en: Strings = {
     text: "Recipe text",
     optional: "(optional / fallback)",
     textPh:
-      "Paste the video description or any recipe text here. Handy when you haven't set a YouTube Data API key — or to import from anywhere, not just YouTube.",
+      "Paste the video description or any recipe text here — useful if auto-fetch fails, or to import from anywhere, not just YouTube.",
     extract: "Extract recipe",
     fetching: "Fetching video…",
     extracting: "Extracting recipe…",
@@ -179,13 +176,13 @@ export const en: Strings = {
     openSettings: "Open Settings",
     how: "How it works",
     how1: "Paste a YouTube cooking video link.",
-    how2: "With a YouTube Data API key set, the description & top comments are fetched automatically. Without one, paste the description into the box above.",
+    how2: "The description & top comments are fetched automatically. If that fails, paste the description into the box above.",
     how3: "Claude ({model}) reads it and structures the ingredients & steps — in English and Ukrainian, with calorie and price estimates.",
     how4: "You review & tweak, then save it to your collection.",
     errNoKey: "Add your Anthropic API key in Settings to enable extraction.",
     errNeedText:
-      "Fetched the video title, but I need the recipe text. Paste the video description below, or add a YouTube Data API key in Settings to fetch it automatically.",
-    errYt: "YouTube API rejected your key: {err}. In Google Cloud console, enable \"YouTube Data API v3\" and allow it under the key's API restrictions. Meanwhile, paste the video description below to continue.",
+      "Fetched the video title, but couldn't get the description automatically. Paste the video description below to continue.",
+    errYt: "YouTube API error: {err}. Paste the video description below to continue.",
     errNothing: "Paste a YouTube link or some recipe text to get started.",
   },
   editor: {
@@ -229,9 +226,6 @@ export const en: Strings = {
     anthropicKey: "Anthropic API key",
     keyNote: "Stored in this browser; when you sign in with Google it also syncs privately to your account, so your other devices get it automatically. Never bundled into the site or included in backup files.",
     model: "Extraction model",
-    ytKey: "YouTube Data API key",
-    ytOptional: "(optional)",
-    ytNote: "Lets the app fetch a video's description & comments automatically. Without it, you paste the description yourself.",
     sync: "Sync",
     syncOff: "Cloud sync isn't configured for this build. Your data lives on this device — use the backup below to move it.",
     signedInAs: "Signed in as",
