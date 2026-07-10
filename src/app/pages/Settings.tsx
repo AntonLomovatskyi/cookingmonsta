@@ -86,6 +86,7 @@ function SyncCard() {
   const t = useT();
   const user = useAuthStore((s) => s.user);
   const status = useAuthStore((s) => s.status);
+  const errorDetail = useAuthStore((s) => s.errorDetail);
   const statusLabel =
     status === "syncing"
       ? t.settings.syncing
@@ -111,6 +112,14 @@ function SyncCard() {
             {t.settings.signedInAs} <span className="text-flame">{user.displayName ?? user.email}</span>
           </div>
           {statusLabel && <div className="text-xs text-text-faint">{statusLabel}</div>}
+          {status === "error" && errorDetail && (
+            <div className="rounded-lg border border-danger/40 bg-danger/10 p-2 text-xs text-danger">
+              {errorDetail}
+              {/insufficient permissions/i.test(errorDetail) && (
+                <div className="mt-1 text-text-dim">{t.settings.syncRulesHint}</div>
+              )}
+            </div>
+          )}
           <div className="flex gap-2">
             <button
               type="button"

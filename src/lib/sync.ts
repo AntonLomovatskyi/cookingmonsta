@@ -15,16 +15,25 @@ export type SyncStatus = "idle" | "syncing" | "saved" | "error";
 interface AuthState {
   user: User | null;
   status: SyncStatus;
-  set: (p: Partial<Pick<AuthState, "user" | "status">>) => void;
+  /** Raw message of the last sync failure — shown in Settings so errors are diagnosable. */
+  errorDetail: string | null;
+  set: (p: Partial<Pick<AuthState, "user" | "status" | "errorDetail">>) => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   status: "idle",
+  errorDetail: null,
   set: (p) => set(p),
 }));
 
-const setStatus = (status: SyncStatus) => useAuthStore.getState().set({ status });
+const setStatus = (status: SyncStatus) => useAuthStore.getState().set({ status, errorDetail: null });
+
+const setError = (scope: string, e: unknown) => {
+  const detail = e instanceof Error ? e.message : String(e);
+  console.error(`[sync] ${scope} failed:`, e);
+  useAuthStore.getState().set({ status: "error", errorDetail: detail });
+};
 
 let suppressPush = false; // don't echo a freshly-pulled snapshot back up
 let pushTimer: ReturnType<typeof setTimeout> | undefined;
@@ -34,10 +43,13 @@ export async function pushNow(uid?: string): Promise<void> {
   if (!db || !u) return;
   try {
     setStatus("syncing");
-    await setDoc(doc(db, "users", u), { data: getCloudSnapshot(), updatedAt: Date.now() });
+    // JSON round-trip strips `undefined` field values, which Firestore rejects (recipes imported
+    // in the current session can carry explicit undefined optional fields).
+    const data = JSON.parse(JSON.stringify(getCloudSnapshot())) as PersistedData;
+    await setDoc(doc(db, "users", u), { data, updatedAt: Date.now() });
     setStatus("saved");
-  } catch {
-    setStatus("error");
+  } catch (e) {
+    setError("push", e);
   }
 }
 
@@ -56,10 +68,11 @@ export async function pullNow(uid?: string): Promise<void> {
       }
     } else {
       await pushNow(u); // first login on this account: seed the cloud with local data
+      return; // pushNow already set the final status (or the error detail)
     }
     setStatus("saved");
-  } catch {
-    setStatus("error");
+  } catch (e) {
+    setError("pull", e);
   }
 }
 

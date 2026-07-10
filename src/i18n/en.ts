@@ -24,6 +24,17 @@ export interface Strings {
     addedToShopping: string;
     nothing: string;
   };
+  roulette: {
+    button: string;
+    title: string;
+    spin: string;
+    again: string;
+    open: string;
+    fQuick: string;
+    fCheap: string;
+    fChocolate: string;
+    fCheesecake: string;
+  };
   home: {
     search: string;
     importTitle: string;
@@ -46,6 +57,7 @@ export interface Strings {
     loggedMsg: string;
     addToList: string;
     onList: string;
+    bakeAlong: string;
     from: string;
     watch: string;
     serving: string;
@@ -54,7 +66,7 @@ export interface Strings {
     perServing: string;
     deleteConfirm: string;
   };
-  cookMode: { step: string; of: string; ingredients: string; next: string; done: string; noSteps: string };
+  cookMode: { step: string; of: string; ingredients: string; video: string; next: string; done: string; noSteps: string };
   importPage: {
     title: string;
     sub: string; // contains {model}
@@ -120,6 +132,7 @@ export interface Strings {
     syncing: string;
     savedCloud: string;
     syncErr: string;
+    syncRulesHint: string;
     saveCloud: string;
     load: string;
     signOut: string;
@@ -194,6 +207,7 @@ export const en: Strings = {
     loggedMsg: "Logged — nice one! 🍽️",
     addToList: "Add to shopping list",
     onList: "On the shopping list",
+    bakeAlong: "Bake along",
     from: "From",
     watch: "Watch the original",
     serving: "serving",
@@ -206,9 +220,21 @@ export const en: Strings = {
     step: "Step",
     of: "of",
     ingredients: "Ingredients",
+    video: "Watch along",
     next: "Next",
     done: "Done cooking",
     noSteps: "No steps recorded for this recipe.",
+  },
+  roulette: {
+    button: "Surprise me",
+    title: "What to bake today?",
+    spin: "Spin",
+    again: "Spin again",
+    open: "Open recipe",
+    fQuick: "≤ 30 min",
+    fCheap: "≤ ₴25",
+    fChocolate: "🍫 Chocolate",
+    fCheesecake: "🧀 Cheesecake",
   },
   importPage: {
     title: "Import a recipe",
@@ -282,6 +308,7 @@ export const en: Strings = {
     syncing: "Syncing…",
     savedCloud: "Saved to cloud ✓",
     syncErr: "Sync error",
+    syncRulesHint: "\"Missing or insufficient permissions\" means the Firestore security rules haven't been published — Firebase console → Firestore Database → Rules.",
     saveCloud: "Save to cloud",
     load: "Load",
     signOut: "Sign out",

@@ -15,6 +15,7 @@ export default function CookMode() {
   const recipe = useRecipeById(id);
   const logCooked = useUserStore((s) => s.logCooked);
   const [step, setStep] = useState(0);
+  const [videoOpen, setVideoOpen] = useState(false);
 
   // Keep the screen awake while cooking (re-acquire when the tab returns to the foreground).
   // A cancelled flag covers the request resolving after unmount, so no sentinel leaks.
@@ -52,6 +53,7 @@ export default function CookMode() {
   const steps = recipe.steps.length ? recipe.steps.map((s) => pickL(s, lang)) : [t.cookMode.noSteps];
   const last = step >= steps.length - 1;
   const progress = ((step + 1) / steps.length) * 100;
+  const videoId = recipe.source?.videoId;
 
   const finish = () => {
     logCooked(recipe.id);
@@ -61,6 +63,27 @@ export default function CookMode() {
   return (
     <div className="flex min-h-full flex-col px-4 py-4">
       <div className="text-sm text-text-dim">{pickL(recipe.title, lang)}</div>
+
+      {/* Watch along — iframe only mounts once opened, so no bandwidth until wanted */}
+      {videoId && (
+        <details
+          className="mt-2 rounded-xl border border-border bg-surface p-3"
+          onToggle={(e) => setVideoOpen(e.currentTarget.open)}
+        >
+          <summary className="cursor-pointer text-sm font-semibold text-flame">▶ {t.cookMode.video}</summary>
+          {videoOpen && (
+            <div className="mt-2 aspect-video overflow-hidden rounded-lg">
+              <iframe
+                src={`https://www.youtube-nocookie.com/embed/${videoId}`}
+                title={pickL(recipe.title, lang)}
+                className="h-full w-full"
+                allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+              />
+            </div>
+          )}
+        </details>
+      )}
 
       {/* Progress */}
       <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-surface-alt">

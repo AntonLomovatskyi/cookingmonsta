@@ -1,4 +1,4 @@
-import { ChefHat, Clock, Flame, Heart, Minus, Pencil, Plus, ShoppingCart, Trash2, Users, Youtube } from "lucide-react";
+import { ChefHat, Clock, Flame, Heart, Minus, Pencil, Play, Plus, ShoppingCart, Trash2, Users, Youtube } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import clsx from "clsx";
@@ -33,10 +33,12 @@ export default function RecipeDetail() {
   const setShoppingServings = useUserStore((s) => s.setShoppingServings);
 
   const [servings, setServings] = useState(recipe?.servings ?? 0);
+  const [showVideo, setShowVideo] = useState(false);
 
   useEffect(() => {
     if (recipe) {
       setServings(recipe.servings ?? 0);
+      setShowVideo(false);
       pushRecentlyViewed(recipe.id);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -66,17 +68,43 @@ export default function RecipeDetail() {
 
   return (
     <div className="pb-4">
-      {/* Cover */}
+      {/* Cover — or the "bake along" video when playing */}
       <div className="relative aspect-[16/9] w-full overflow-hidden bg-surface-alt">
-        {recipe.image ? (
-          <img src={recipe.image} alt="" className="h-full w-full object-cover" />
+        {showVideo && recipe.source?.videoId ? (
+          <iframe
+            src={`https://www.youtube-nocookie.com/embed/${recipe.source.videoId}?autoplay=1`}
+            title={pickL(recipe.title, lang)}
+            className="h-full w-full"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowFullScreen
+          />
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-6xl">🍳</div>
+          <>
+            {recipe.image ? (
+              <img src={recipe.image} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center text-6xl">🍳</div>
+            )}
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-bg to-transparent p-4">
+              <h1 className="font-display text-2xl font-bold text-text drop-shadow">{pickL(recipe.title, lang)}</h1>
+            </div>
+            {recipe.source?.videoId && (
+              <button
+                onClick={() => setShowVideo(true)}
+                className="absolute inset-0 flex items-start justify-center pt-8"
+                aria-label={t.detail.bakeAlong}
+              >
+                <span className="flex items-center gap-2 rounded-full bg-bg/80 px-4 py-2 text-sm font-bold text-flame backdrop-blur transition hover:bg-bg">
+                  <Play size={16} fill="currentColor" /> {t.detail.bakeAlong}
+                </span>
+              </button>
+            )}
+          </>
         )}
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-bg to-transparent p-4">
-          <h1 className="font-display text-2xl font-bold text-text drop-shadow">{pickL(recipe.title, lang)}</h1>
-        </div>
       </div>
+      {showVideo && (
+        <h1 className="px-4 pt-3 font-display text-2xl font-bold text-text">{pickL(recipe.title, lang)}</h1>
+      )}
 
       <div className="px-4">
         {recipe.description && <p className="mt-3 text-sm text-text-dim">{pickL(recipe.description, lang)}</p>}

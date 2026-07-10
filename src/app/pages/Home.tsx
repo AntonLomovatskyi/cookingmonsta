@@ -1,8 +1,9 @@
-import { ArrowDownUp, Search, Sparkles } from "lucide-react";
-import { useMemo } from "react";
+import { ArrowDownUp, Dices, Search, Sparkles } from "lucide-react";
+import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Chip } from "@/components/Chip";
 import { RecipeCard } from "@/components/RecipeCard";
+import { Roulette } from "@/components/Roulette";
 import { useAllRecipes, useAllTags } from "@/data/useRecipes";
 import { useLang, useT } from "@/i18n";
 import { pickL, totalMinutes, type Lang, type Recipe } from "@/types/recipe";
@@ -38,6 +39,7 @@ export default function Home() {
   const tags = useAllTags();
   const { query, tags: activeTags, sort, setQuery, toggleTag, setSort } = useFilterStore();
   const cooked = useUserStore((s) => s.cooked);
+  const [showRoulette, setShowRoulette] = useState(false);
 
   const cookCounts = useMemo(() => {
     const m = new Map<string, number>();
@@ -104,10 +106,18 @@ export default function Home() {
         >
           <ArrowDownUp size={14} /> {t.home.sort[sort]}
         </button>
+        <button
+          onClick={() => setShowRoulette(true)}
+          className="flex items-center gap-1 rounded-full border border-flame px-3 py-1.5 text-sm text-flame"
+        >
+          <Dices size={14} /> {t.roulette.button}
+        </button>
         <span className="text-xs text-text-faint">
           {list.length} {t.home.count}
         </span>
       </div>
+
+      {showRoulette && <Roulette onClose={() => setShowRoulette(false)} />}
 
       {tags.length > 0 && (
         <div className="no-scrollbar mt-2 flex gap-2 overflow-x-auto px-4">
