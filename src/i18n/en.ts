@@ -1,6 +1,29 @@
 /** English UI strings. `Strings` is the authoritative shape; uk.ts mirrors it. */
 export interface Strings {
-  tabs: { recipes: string; import: string; saved: string };
+  tabs: { recipes: string; import: string; saved: string; shopping: string; plan: string };
+  shopping: {
+    title: string;
+    empty: string;
+    emptyHint: string;
+    recipesOn: string;
+    estTotal: string;
+    clearBought: string;
+    clearAll: string;
+    clearAllConfirm: string;
+    toTaste: string;
+  };
+  plan: {
+    title: string;
+    thisWeek: string;
+    addRecipe: string;
+    searchPh: string;
+    weekKcal: string;
+    weekCost: string;
+    avgDay: string;
+    addToShopping: string;
+    addedToShopping: string;
+    nothing: string;
+  };
   home: {
     search: string;
     importTitle: string;
@@ -21,6 +44,8 @@ export interface Strings {
     notesPh: string;
     cookedBtn: string;
     loggedMsg: string;
+    addToList: string;
+    onList: string;
     from: string;
     watch: string;
     serving: string;
@@ -123,7 +148,30 @@ export interface Strings {
 }
 
 export const en: Strings = {
-  tabs: { recipes: "Recipes", import: "Import", saved: "Saved" },
+  tabs: { recipes: "Recipes", import: "Import", saved: "Saved", shopping: "Shopping", plan: "Plan" },
+  shopping: {
+    title: "Shopping list",
+    empty: "Your shopping list is empty.",
+    emptyHint: "Add recipes with the cart button on any recipe, or send a whole week from the planner.",
+    recipesOn: "Recipes on the list",
+    estTotal: "Estimated total",
+    clearBought: "Uncheck all",
+    clearAll: "Clear list",
+    clearAllConfirm: "Clear the whole shopping list?",
+    toTaste: "to taste / as needed",
+  },
+  plan: {
+    title: "Meal plan",
+    thisWeek: "This week",
+    addRecipe: "Add a recipe",
+    searchPh: "Search recipes…",
+    weekKcal: "kcal this week",
+    weekCost: "food budget",
+    avgDay: "avg/day",
+    addToShopping: "Send week to shopping list",
+    addedToShopping: "Added to the shopping list ✓",
+    nothing: "Nothing planned",
+  },
   home: {
     search: "Search recipes, ingredients…",
     importTitle: "Import from YouTube",
@@ -144,6 +192,8 @@ export const en: Strings = {
     notesPh: "Tweaks, timings, what you'd change next time…",
     cookedBtn: "✅ I cooked this",
     loggedMsg: "Logged — nice one! 🍽️",
+    addToList: "Add to shopping list",
+    onList: "On the shopping list",
     from: "From",
     watch: "Watch the original",
     serving: "serving",

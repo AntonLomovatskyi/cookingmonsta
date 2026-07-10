@@ -9,6 +9,7 @@
  */
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
+import { getSeedRecipeById } from "@/data/recipes";
 import type { L10n, Lang, Recipe } from "@/types/recipe";
 
 /** Extraction models the user can choose from (Settings). Ordered cheap → powerful. */
@@ -30,6 +31,12 @@ export interface UserState {
   notes: Record<string, string>; // id -> personal note (single language, personal)
   cooked: CookEntry[]; // cook log, most-recent first
   recentlyViewed: string[]; // recipe ids, most-recent first (local only)
+  /** Shopping list: recipeId -> desired servings (or batch count when the recipe has no base). */
+  shopping: Record<string, number>;
+  /** Aggregated shopping lines ticked off as bought (keys from domain/shopping). */
+  boughtItems: string[];
+  /** Weekly meal plan: local date key (YYYY-MM-DD) -> recipe ids (duplicates allowed). */
+  plan: Record<string, string[]>;
   /** User-created & imported recipes, merged into the catalog at runtime. */
   userRecipes: Recipe[];
   theme: "dark" | "light";
@@ -47,6 +54,14 @@ export interface UserState {
   setNote: (id: string, text: string) => void;
   logCooked: (id: string) => void;
   clearCooked: () => void;
+  setShoppingServings: (id: string, servings: number) => void;
+  clearShopping: () => void;
+  toggleBought: (key: string) => void;
+  clearBought: () => void;
+  /** Drop ticked keys that no longer exist on the aggregated list (prevents stale pre-checks). */
+  pruneBought: (validKeys: string[]) => void;
+  addToPlan: (date: string, id: string) => void;
+  removeFromPlan: (date: string, index: number) => void;
   pushRecentlyViewed: (id: string) => void;
   addUserRecipe: (r: Recipe) => void;
   removeUserRecipe: (id: string) => void;
@@ -61,7 +76,17 @@ export interface UserState {
  */
 export type PersistedData = Pick<
   UserState,
-  "favourites" | "notes" | "cooked" | "userRecipes" | "recentlyViewed" | "theme" | "language" | "aiModel"
+  | "favourites"
+  | "notes"
+  | "cooked"
+  | "shopping"
+  | "boughtItems"
+  | "plan"
+  | "userRecipes"
+  | "recentlyViewed"
+  | "theme"
+  | "language"
+  | "aiModel"
 > & { anthropicKey?: string };
 
 /* ---------- v1 → v2 migration: plain strings → bilingual L10n pairs ---------- */
@@ -107,6 +132,9 @@ export const useUserStore = create<UserState>()(
       notes: {},
       cooked: [],
       recentlyViewed: [],
+      shopping: {},
+      boughtItems: [],
+      plan: {},
       userRecipes: [],
       theme: "dark",
       language: "en",
@@ -130,20 +158,66 @@ export const useUserStore = create<UserState>()(
         }),
       logCooked: (id) => set((s) => ({ cooked: [{ recipeId: id, at: Date.now() }, ...s.cooked].slice(0, 500) })),
       clearCooked: () => set({ cooked: [] }),
+      setShoppingServings: (id, servings) =>
+        set((s) => {
+          const next = { ...s.shopping };
+          if (servings <= 0) delete next[id];
+          else next[id] = servings;
+          return { shopping: next };
+        }),
+      clearShopping: () => set({ shopping: {}, boughtItems: [] }),
+      toggleBought: (key) =>
+        set((s) => ({
+          boughtItems: s.boughtItems.includes(key) ? s.boughtItems.filter((x) => x !== key) : [...s.boughtItems, key],
+        })),
+      clearBought: () => set({ boughtItems: [] }),
+      pruneBought: (validKeys) =>
+        set((s) => {
+          const pruned = s.boughtItems.filter((k) => validKeys.includes(k));
+          return pruned.length === s.boughtItems.length ? s : { boughtItems: pruned };
+        }),
+      addToPlan: (date, id) => set((s) => ({ plan: { ...s.plan, [date]: [...(s.plan[date] ?? []), id] } })),
+      removeFromPlan: (date, index) =>
+        set((s) => {
+          const day = (s.plan[date] ?? []).filter((_, i) => i !== index);
+          const plan = { ...s.plan };
+          if (day.length) plan[date] = day;
+          else delete plan[date];
+          return { plan };
+        }),
       pushRecentlyViewed: (id) =>
         set((s) => ({ recentlyViewed: [id, ...s.recentlyViewed.filter((x) => x !== id)].slice(0, 12) })),
       addUserRecipe: (r) => set((s) => ({ userRecipes: [r, ...s.userRecipes.filter((x) => x.id !== r.id)] })),
       removeUserRecipe: (id) =>
-        set((s) => ({
-          userRecipes: s.userRecipes.filter((x) => x.id !== id),
-          favourites: s.favourites.filter((x) => x !== id),
-        })),
+        set((s) => {
+          // If the deleted copy merely shadowed a bundled recipe (edit flow reuses the seed id),
+          // the recipe stays in the catalog — keep its plan/shopping/favourite entries.
+          if (getSeedRecipeById(id)) {
+            return { userRecipes: s.userRecipes.filter((x) => x.id !== id) };
+          }
+          const shopping = { ...s.shopping };
+          delete shopping[id];
+          const plan = Object.fromEntries(
+            Object.entries(s.plan)
+              .map(([d, ids]) => [d, ids.filter((x) => x !== id)] as const)
+              .filter(([, ids]) => ids.length),
+          );
+          return {
+            userRecipes: s.userRecipes.filter((x) => x.id !== id),
+            favourites: s.favourites.filter((x) => x !== id),
+            shopping,
+            plan,
+          };
+        }),
       clearFavourites: () => set({ favourites: [] }),
       importData: (d) =>
         set((s) => ({
           favourites: d.favourites ?? s.favourites,
           notes: d.notes ?? s.notes,
           cooked: d.cooked ?? s.cooked,
+          shopping: d.shopping ?? s.shopping,
+          boughtItems: d.boughtItems ?? s.boughtItems,
+          plan: d.plan ?? s.plan,
           // Backups may predate the bilingual schema — normalise on the way in.
           userRecipes: d.userRecipes ? d.userRecipes.map(migrateRecipeV2) : s.userRecipes,
           recentlyViewed: d.recentlyViewed ?? s.recentlyViewed,

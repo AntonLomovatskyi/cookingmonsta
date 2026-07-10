@@ -1,5 +1,5 @@
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import clsx from "clsx";
 import { useRecipeById } from "@/data/useRecipes";
@@ -15,6 +15,35 @@ export default function CookMode() {
   const recipe = useRecipeById(id);
   const logCooked = useUserStore((s) => s.logCooked);
   const [step, setStep] = useState(0);
+
+  // Keep the screen awake while cooking (re-acquire when the tab returns to the foreground).
+  // A cancelled flag covers the request resolving after unmount, so no sentinel leaks.
+  useEffect(() => {
+    let cancelled = false;
+    let lock: WakeLockSentinel | null = null;
+    const acquire = async () => {
+      try {
+        const sentinel = (await navigator.wakeLock?.request("screen")) ?? null;
+        if (cancelled) {
+          void sentinel?.release().catch(() => undefined);
+          return;
+        }
+        lock = sentinel;
+      } catch {
+        /* unsupported or denied — fine */
+      }
+    };
+    void acquire();
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") void acquire();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      cancelled = true;
+      document.removeEventListener("visibilitychange", onVisibility);
+      void lock?.release().catch(() => undefined);
+    };
+  }, []);
 
   if (!recipe) {
     return <div className="px-6 py-16 text-center text-text-dim">{t.detail.notFound}</div>;

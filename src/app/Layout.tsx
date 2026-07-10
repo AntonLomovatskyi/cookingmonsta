@@ -1,9 +1,9 @@
-import { ChevronLeft, Heart, Home, Settings, Sparkles } from "lucide-react";
+import { CalendarDays, ChevronLeft, Heart, Home, Settings, ShoppingCart, Sparkles } from "lucide-react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import clsx from "clsx";
 import { useT } from "@/i18n";
 
-const TAB_ROOTS = ["/", "/import", "/favourites"];
+const TAB_ROOTS = ["/", "/plan", "/shopping", "/import", "/favourites"];
 
 export function Layout() {
   const t = useT();
@@ -12,6 +12,8 @@ export function Layout() {
   const isTabRoot = TAB_ROOTS.includes(loc.pathname);
   const tabs = [
     { to: "/", label: t.tabs.recipes, Icon: Home, end: true },
+    { to: "/plan", label: t.tabs.plan, Icon: CalendarDays, end: false },
+    { to: "/shopping", label: t.tabs.shopping, Icon: ShoppingCart, end: false },
     { to: "/import", label: t.tabs.import, Icon: Sparkles, end: false },
     { to: "/favourites", label: t.tabs.saved, Icon: Heart, end: false },
   ];

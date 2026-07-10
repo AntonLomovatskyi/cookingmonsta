@@ -14,3 +14,15 @@ export function useT(): Strings {
 export function useLang(): Lang {
   return useUserStore((s) => s.language);
 }
+
+/** Correct plural for "N servings" — Ukrainian needs three forms (1 порція / 2–4 порції / 5+ порцій). */
+export function servingsWord(n: number, lang: Lang): string {
+  if (lang === "uk") {
+    const mod10 = n % 10;
+    const mod100 = n % 100;
+    if (mod10 === 1 && mod100 !== 11) return "порція";
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return "порції";
+    return "порцій";
+  }
+  return n === 1 ? "serving" : "servings";
+}

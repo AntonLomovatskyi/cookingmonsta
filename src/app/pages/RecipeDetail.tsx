@@ -1,10 +1,10 @@
-import { ChefHat, Clock, Flame, Heart, Minus, Pencil, Plus, Trash2, Users, Youtube } from "lucide-react";
+import { ChefHat, Clock, Flame, Heart, Minus, Pencil, Plus, ShoppingCart, Trash2, Users, Youtube } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import clsx from "clsx";
 import { useRecipeById } from "@/data/useRecipes";
 import { getSeedRecipeById } from "@/data/recipes";
-import { useLang, useT } from "@/i18n";
+import { servingsWord, useLang, useT } from "@/i18n";
 import { formatQuantity, scaleIngredient } from "@/lib/scale";
 import { pickL, totalMinutes } from "@/types/recipe";
 import { useUserStore } from "@/store/userStore";
@@ -29,6 +29,8 @@ export default function RecipeDetail() {
   const removeUserRecipe = useUserStore((s) => s.removeUserRecipe);
   const pushRecentlyViewed = useUserStore((s) => s.pushRecentlyViewed);
   const userRecipes = useUserStore((s) => s.userRecipes);
+  const shopping = useUserStore((s) => s.shopping);
+  const setShoppingServings = useUserStore((s) => s.setShoppingServings);
 
   const [servings, setServings] = useState(recipe?.servings ?? 0);
 
@@ -131,6 +133,19 @@ export default function RecipeDetail() {
           >
             <Heart size={18} fill={fav ? "currentColor" : "none"} />
           </button>
+          <button
+            onClick={() =>
+              shopping[recipe.id] ? setShoppingServings(recipe.id, 0) : setShoppingServings(recipe.id, servings || recipe.servings || 1)
+            }
+            aria-label={shopping[recipe.id] ? t.detail.onList : t.detail.addToList}
+            title={shopping[recipe.id] ? t.detail.onList : t.detail.addToList}
+            className={clsx(
+              "flex w-12 items-center justify-center rounded-xl border",
+              shopping[recipe.id] ? "border-herb bg-herb/15 text-herb" : "border-border text-text-dim",
+            )}
+          >
+            <ShoppingCart size={18} />
+          </button>
           {(isUserRecipe || isEditableSeed) && (
             <Link
               to={`/recipe/new?edit=${recipe.id}`}
@@ -177,7 +192,7 @@ export default function RecipeDetail() {
                   <Minus size={16} />
                 </button>
                 <span className="min-w-14 text-center text-sm text-text">
-                  {servings} {servings === 1 ? t.detail.serving : t.detail.servings}
+                  {servings} {servingsWord(servings, lang)}
                 </span>
                 <button
                   onClick={() => setServings((s) => s + 1)}

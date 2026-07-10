@@ -2,7 +2,30 @@ import type { Strings } from "./en";
 
 /** Ukrainian UI strings. */
 export const uk: Strings = {
-  tabs: { recipes: "Рецепти", import: "Імпорт", saved: "Збережене" },
+  tabs: { recipes: "Рецепти", import: "Імпорт", saved: "Збережене", shopping: "Покупки", plan: "План" },
+  shopping: {
+    title: "Список покупок",
+    empty: "Список покупок порожній.",
+    emptyHint: "Додавай рецепти кнопкою з кошиком на будь-якому рецепті або надішли цілий тиждень із планера.",
+    recipesOn: "Рецепти у списку",
+    estTotal: "Орієнтовна сума",
+    clearBought: "Зняти всі позначки",
+    clearAll: "Очистити список",
+    clearAllConfirm: "Очистити весь список покупок?",
+    toTaste: "за смаком / за потреби",
+  },
+  plan: {
+    title: "План меню",
+    thisWeek: "Цей тиждень",
+    addRecipe: "Додати рецепт",
+    searchPh: "Шукати рецепти…",
+    weekKcal: "ккал за тиждень",
+    weekCost: "бюджет на їжу",
+    avgDay: "серед./день",
+    addToShopping: "Тиждень у список покупок",
+    addedToShopping: "Додано до списку покупок ✓",
+    nothing: "Нічого не заплановано",
+  },
   home: {
     search: "Шукати рецепти, інгредієнти…",
     importTitle: "Імпорт з YouTube",
@@ -23,6 +46,8 @@ export const uk: Strings = {
     notesPh: "Правки, таймінги, що змінити наступного разу…",
     cookedBtn: "✅ Я це приготував",
     loggedMsg: "Записано — смачного! 🍽️",
+    addToList: "Додати до списку покупок",
+    onList: "У списку покупок",
     from: "Від",
     watch: "Дивитися оригінал",
     serving: "порція",
