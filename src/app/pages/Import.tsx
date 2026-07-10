@@ -1,11 +1,11 @@
 import { AlertCircle, Loader2, Sparkles, Youtube } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { extractRecipe } from "@/lib/ai";
+import { EXTRACTION_MODEL, extractRecipe } from "@/lib/ai";
 import { fetchYouTube, parseVideoId } from "@/lib/youtube";
 import { slugify } from "@/data/recipes";
 import { useT } from "@/i18n";
-import { AI_MODELS, useUserStore } from "@/store/userStore";
+import { useUserStore } from "@/store/userStore";
 import { useDraftStore } from "@/store/draftStore";
 import type { Recipe } from "@/types/recipe";
 
@@ -18,7 +18,6 @@ export default function Import() {
   const t = useT();
   const nav = useNavigate();
   const anthropicKey = useUserStore((s) => s.anthropicKey);
-  const aiModel = useUserStore((s) => s.aiModel);
   const setDraft = useDraftStore((s) => s.setDraft);
 
   const [url, setUrl] = useState("");
@@ -27,7 +26,7 @@ export default function Import() {
   const [error, setError] = useState("");
   const [fetchedTitle, setFetchedTitle] = useState<string | null>(null);
 
-  const modelLabel = AI_MODELS.find((m) => m.id === aiModel)?.label ?? aiModel;
+  const modelLabel = EXTRACTION_MODEL.label;
   const busy = phase === "fetching" || phase === "extracting";
 
   const run = async () => {
@@ -72,11 +71,7 @@ export default function Import() {
       }
 
       setPhase("extracting");
-      const extracted = await extractRecipe(
-        { title, author, description, comments, extraText: pasted },
-        anthropicKey,
-        aiModel,
-      );
+      const extracted = await extractRecipe({ title, author, description, comments, extraText: pasted }, anthropicKey);
 
       const id = slugify(extracted.title.en || extracted.title.uk);
       const recipe: Recipe = {

@@ -8,8 +8,10 @@
  * counts — cups, oz, lb, sticks are converted), plus per-serving calorie and ₴-price estimates.
  */
 import Anthropic from "@anthropic-ai/sdk";
-import type { AiModel } from "@/store/userStore";
 import type { Difficulty, Ingredient, L10n } from "@/types/recipe";
+
+/** Extraction always runs on the cheapest model — plenty for structured recipe extraction. */
+export const EXTRACTION_MODEL = { id: "claude-haiku-4-5", label: "Haiku 4.5" } as const;
 
 const L10N_SCHEMA = {
   type: "object",
@@ -218,14 +220,14 @@ function clean(raw: RawRecipe): ExtractedRecipe {
   };
 }
 
-export async function extractRecipe(input: ExtractInput, apiKey: string, model: AiModel): Promise<ExtractedRecipe> {
+export async function extractRecipe(input: ExtractInput, apiKey: string): Promise<ExtractedRecipe> {
   if (!apiKey) throw new Error("Add your Anthropic API key in Settings first.");
 
   const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true });
 
   // output_config / model strings may be newer than the installed SDK types — cast the request.
   const body = {
-    model,
+    model: EXTRACTION_MODEL.id,
     max_tokens: 12000,
     system: SYSTEM,
     messages: [{ role: "user", content: buildUserContent(input) }],

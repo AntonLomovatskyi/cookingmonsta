@@ -12,15 +12,6 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import { getSeedRecipeById } from "@/data/recipes";
 import type { L10n, Lang, Recipe } from "@/types/recipe";
 
-/** Extraction models the user can choose from (Settings). Ordered cheap → powerful. */
-export const AI_MODELS = [
-  { id: "claude-haiku-4-5", label: "Haiku 4.5", hint: "fast & cheap · default" },
-  { id: "claude-sonnet-5", label: "Sonnet 5", hint: "balanced" },
-  { id: "claude-opus-4-8", label: "Opus 4.8", hint: "most capable" },
-  { id: "claude-fable-5", label: "Fable 5", hint: "🔥 heavy" },
-] as const;
-export type AiModel = (typeof AI_MODELS)[number]["id"];
-
 export interface CookEntry {
   recipeId: string;
   at: number; // epoch ms
@@ -41,14 +32,11 @@ export interface UserState {
   userRecipes: Recipe[];
   theme: "dark" | "light";
   language: Lang;
-  /** Which Claude model extracts recipes. */
-  aiModel: AiModel;
   /** Anthropic API key — stored locally; cloud-synced via getCloudSnapshot(). */
   anthropicKey: string;
 
   setTheme: (t: "dark" | "light") => void;
   setLanguage: (l: Lang) => void;
-  setAiModel: (m: AiModel) => void;
   setAnthropicKey: (k: string) => void;
   toggleFavourite: (id: string) => void;
   setNote: (id: string, text: string) => void;
@@ -86,7 +74,6 @@ export type PersistedData = Pick<
   | "recentlyViewed"
   | "theme"
   | "language"
-  | "aiModel"
 > & { anthropicKey?: string };
 
 /* ---------- v1 → v2 migration: plain strings → bilingual L10n pairs ---------- */
@@ -138,12 +125,10 @@ export const useUserStore = create<UserState>()(
       userRecipes: [],
       theme: "dark",
       language: "en",
-      aiModel: "claude-haiku-4-5",
       anthropicKey: "",
 
       setTheme: (t) => set({ theme: t }),
       setLanguage: (l) => set({ language: l }),
-      setAiModel: (m) => set({ aiModel: m }),
       setAnthropicKey: (k) => set({ anthropicKey: k.trim() }),
       toggleFavourite: (id) =>
         set((s) => ({
@@ -223,20 +208,20 @@ export const useUserStore = create<UserState>()(
           recentlyViewed: d.recentlyViewed ?? s.recentlyViewed,
           theme: d.theme ?? s.theme,
           language: d.language ?? s.language,
-          aiModel: d.aiModel ?? s.aiModel,
           anthropicKey: d.anthropicKey || s.anthropicKey,
         })),
     }),
     {
       name: "cookingmonsta/v1/user",
-      version: 3,
+      version: 4,
       storage: createJSONStorage(() => localStorage),
       migrate: (persisted, version) => {
-        const s = persisted as Partial<UserState> & { youtubeKey?: string };
+        const s = persisted as Partial<UserState> & { youtubeKey?: string; aiModel?: string };
         if (version < 2 && Array.isArray(s.userRecipes)) {
           s.userRecipes = s.userRecipes.map(migrateRecipeV2);
         }
         if (version < 3) delete s.youtubeKey; // per-user YouTube key removed; app-wide key only
+        if (version < 4) delete s.aiModel; // model selector removed; extraction always uses Haiku
         return s as UserState;
       },
     },

@@ -40,6 +40,20 @@ export interface Strings {
     importTitle: string;
     importSub: string;
     sort: { recent: string; title: string; time: string; cooked: string };
+    categories: {
+      all: string;
+      cookies: string;
+      bars: string;
+      rolls: string;
+      muffins: string;
+      cheesecake: string;
+      cakes: string;
+      meals: string;
+      other: string;
+    };
+    fQuick: string;
+    fCheap: string;
+    fLight: string;
     count: string;
     none: string;
     importFirst: string;
@@ -125,7 +139,6 @@ export interface Strings {
     aiImport: string;
     anthropicKey: string;
     keyNote: string;
-    model: string;
     sync: string;
     syncOff: string;
     signedInAs: string;
@@ -190,6 +203,20 @@ export const en: Strings = {
     importTitle: "Import from YouTube",
     importSub: "Paste a link — Claude pulls out the ingredients & steps.",
     sort: { recent: "Newest", title: "A–Z", time: "Quickest", cooked: "Most cooked" },
+    categories: {
+      all: "All",
+      cookies: "Cookies",
+      bars: "Brownies & bars",
+      rolls: "Rolls & buns",
+      muffins: "Muffins & cupcakes",
+      cheesecake: "Cheesecakes",
+      cakes: "Cakes",
+      meals: "Meals",
+      other: "More desserts",
+    },
+    fQuick: "≤ 30 min",
+    fCheap: "≤ ₴25",
+    fLight: "≤ 300 kcal",
     count: "recipes",
     none: "No recipes match.",
     importFirst: "Import your first one",
@@ -301,7 +328,6 @@ export const en: Strings = {
     aiImport: "AI import",
     anthropicKey: "Anthropic API key",
     keyNote: "Stored in this browser; when you sign in with Google it also syncs privately to your account, so your other devices get it automatically. Never bundled into the site or included in backup files.",
-    model: "Extraction model",
     sync: "Sync",
     syncOff: "Cloud sync isn't configured for this build. Your data lives on this device — use the backup below to move it.",
     signedInAs: "Signed in as",

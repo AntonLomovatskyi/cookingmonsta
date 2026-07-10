@@ -1,10 +1,11 @@
 import { ArrowDownUp, Dices, Search, Sparkles } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Chip } from "@/components/Chip";
+import clsx from "clsx";
 import { RecipeCard } from "@/components/RecipeCard";
 import { Roulette } from "@/components/Roulette";
-import { useAllRecipes, useAllTags } from "@/data/useRecipes";
+import { CATEGORIES, CATEGORY_EMOJI, categorize, type Category } from "@/domain/categories";
+import { useAllRecipes } from "@/data/useRecipes";
 import { useLang, useT } from "@/i18n";
 import { pickL, totalMinutes, type Lang, type Recipe } from "@/types/recipe";
 import { useFilterStore, type SortMode } from "@/store/filterStore";
@@ -36,8 +37,8 @@ export default function Home() {
   const lang: Lang = useLang();
   const nav = useNavigate();
   const all = useAllRecipes();
-  const tags = useAllTags();
-  const { query, tags: activeTags, sort, setQuery, toggleTag, setSort } = useFilterStore();
+  const { query, category, quick, cheap, light, sort, setQuery, setCategory, toggleQuick, toggleCheap, toggleLight, setSort } =
+    useFilterStore();
   const cooked = useUserStore((s) => s.cooked);
   const [showRoulette, setShowRoulette] = useState(false);
 
@@ -47,9 +48,28 @@ export default function Home() {
     return m;
   }, [cooked]);
 
+  const categoryOf = useMemo(() => {
+    const m = new Map<string, Category>();
+    for (const r of all) m.set(r.id, categorize(r));
+    return m;
+  }, [all]);
+
+  const counts = useMemo(() => {
+    const m = new Map<Category, number>();
+    for (const r of all) {
+      const c = categoryOf.get(r.id)!;
+      m.set(c, (m.get(c) ?? 0) + 1);
+    }
+    m.set("all", all.length);
+    return m;
+  }, [all, categoryOf]);
+
   const list = useMemo(() => {
     let base = all.filter((r) => matches(r, query));
-    if (activeTags.length) base = base.filter((r) => activeTags.every((tg) => r.tags.includes(tg)));
+    if (category !== "all") base = base.filter((r) => categoryOf.get(r.id) === category);
+    if (quick) base = base.filter((r) => (totalMinutes(r) ?? 999) <= 30);
+    if (cheap) base = base.filter((r) => (r.priceUah ?? 999) <= 25);
+    if (light) base = base.filter((r) => (r.caloriesPerServing ?? 999) <= 300);
     const sorted = [...base];
     sorted.sort((a, b) => {
       switch (sort) {
@@ -64,12 +84,18 @@ export default function Home() {
       }
     });
     return sorted;
-  }, [all, query, activeTags, sort, cookCounts, lang]);
+  }, [all, query, category, categoryOf, quick, cheap, light, sort, cookCounts, lang]);
 
   const cycleSort = () => {
     const i = SORT_KEYS.indexOf(sort);
     setSort(SORT_KEYS[(i + 1) % SORT_KEYS.length]);
   };
+
+  const filterChip = (active: boolean) =>
+    clsx(
+      "shrink-0 rounded-full border px-3 py-1.5 text-sm transition",
+      active ? "border-flame bg-flame/15 text-flame" : "border-border text-text-dim hover:border-flame/60",
+    );
 
   return (
     <div>
@@ -99,35 +125,51 @@ export default function Home() {
         </div>
       </Link>
 
-      <div className="mt-3 flex items-center gap-2 px-4">
+      {/* Category shelves */}
+      <div className="no-scrollbar mt-3 flex gap-2 overflow-x-auto px-4">
+        {CATEGORIES.map((c) => {
+          const n = counts.get(c) ?? 0;
+          if (c !== "all" && n === 0) return null;
+          return (
+            <button key={c} onClick={() => setCategory(c)} className={filterChip(category === c)}>
+              {CATEGORY_EMOJI[c]} {t.home.categories[c]} <span className="opacity-60">{n}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Smart filters + sort + roulette */}
+      <div className="no-scrollbar mt-2 flex items-center gap-2 overflow-x-auto px-4">
+        <button onClick={toggleQuick} className={filterChip(quick)}>
+          ⏱ {t.home.fQuick}
+        </button>
+        <button onClick={toggleCheap} className={filterChip(cheap)}>
+          💸 {t.home.fCheap}
+        </button>
+        <button onClick={toggleLight} className={filterChip(light)}>
+          🌿 {t.home.fLight}
+        </button>
         <button
           onClick={cycleSort}
-          className="flex items-center gap-1 rounded-full border border-border px-3 py-1.5 text-sm text-text-dim"
+          className="flex shrink-0 items-center gap-1 rounded-full border border-border px-3 py-1.5 text-sm text-text-dim"
         >
           <ArrowDownUp size={14} /> {t.home.sort[sort]}
         </button>
         <button
           onClick={() => setShowRoulette(true)}
-          className="flex items-center gap-1 rounded-full border border-flame px-3 py-1.5 text-sm text-flame"
+          className="flex shrink-0 items-center gap-1 rounded-full border border-flame px-3 py-1.5 text-sm text-flame"
         >
           <Dices size={14} /> {t.roulette.button}
         </button>
-        <span className="text-xs text-text-faint">
-          {list.length} {t.home.count}
-        </span>
       </div>
 
       {showRoulette && <Roulette onClose={() => setShowRoulette(false)} />}
 
-      {tags.length > 0 && (
-        <div className="no-scrollbar mt-2 flex gap-2 overflow-x-auto px-4">
-          {tags.slice(0, 20).map((tg) => (
-            <Chip key={tg} label={tg} selected={activeTags.includes(tg)} onClick={() => toggleTag(tg)} />
-          ))}
-        </div>
-      )}
+      <div className="px-4 pt-2 text-xs text-text-faint">
+        {list.length} {t.home.count}
+      </div>
 
-      <div className="mt-3 grid grid-cols-2 gap-3 px-4 sm:grid-cols-3">
+      <div className="mt-1 grid grid-cols-2 gap-3 px-4 sm:grid-cols-3">
         {list.map((r) => (
           <RecipeCard key={r.id} recipe={r} />
         ))}

@@ -23,7 +23,6 @@ export function getSnapshot(): PersistedData {
     recentlyViewed: s.recentlyViewed,
     theme: s.theme,
     language: s.language,
-    aiModel: s.aiModel,
   };
 }
 

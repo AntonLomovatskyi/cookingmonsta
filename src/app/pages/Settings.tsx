@@ -6,7 +6,7 @@ import { exportData, importDataFromFile } from "@/data/backup";
 import { useT } from "@/i18n";
 import { firebaseEnabled } from "@/lib/firebase";
 import { pullNow, pushNow, signInWithGoogle, signOutNow, useAuthStore } from "@/lib/sync";
-import { AI_MODELS, useUserStore, type AiModel } from "@/store/userStore";
+import { useUserStore } from "@/store/userStore";
 import type { Lang } from "@/types/recipe";
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
@@ -166,8 +166,6 @@ export default function Settings() {
   const setTheme = useUserStore((s) => s.setTheme);
   const language = useUserStore((s) => s.language);
   const setLanguage = useUserStore((s) => s.setLanguage);
-  const aiModel = useUserStore((s) => s.aiModel);
-  const setAiModel = useUserStore((s) => s.setAiModel);
   const anthropicKey = useUserStore((s) => s.anthropicKey);
   const setAnthropicKey = useUserStore((s) => s.setAnthropicKey);
   const favourites = useUserStore((s) => s.favourites);
@@ -201,25 +199,6 @@ export default function Settings() {
             </p>
           </div>
 
-          <div>
-            <div className="mb-1.5 text-sm text-text-dim">{t.settings.model}</div>
-            <div className="grid grid-cols-2 gap-2">
-              {AI_MODELS.map((m) => (
-                <button
-                  key={m.id}
-                  type="button"
-                  onClick={() => setAiModel(m.id as AiModel)}
-                  className={clsx(
-                    "rounded-xl border px-3 py-2 text-left transition",
-                    aiModel === m.id ? "border-flame bg-flame/15" : "border-border bg-surface-alt hover:border-flame/60",
-                  )}
-                >
-                  <div className="text-sm font-semibold text-text">{m.label}</div>
-                  <div className="text-[11px] text-text-faint">{m.hint}</div>
-                </button>
-              ))}
-            </div>
-          </div>
 
         </div>
       </Card>
